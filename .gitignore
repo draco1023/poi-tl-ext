@@ -18,13 +18,39 @@
 *.zip
 *.tar.gz
 *.rar
+*.docx
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+nbproject/private/
+!dev/build/*
+build/*
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
 
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 
 # Ignore Gradle project-specific cache directory
-.gradle
+.gradle/
 gradle.properties
 
 # Ignore Gradle build output directory
-build
+build/
+out/
+.gradletasknamecache
