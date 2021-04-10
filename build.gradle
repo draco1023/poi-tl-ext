@@ -27,6 +27,13 @@ plugins {
     id 'java-library'
 }
 
+// https://github.com/vanniktech/gradle-maven-publish-plugin/issues/206
+// change domain before applying the plugin
+ext {
+    RELEASE_REPOSITORY_URL = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+    SNAPSHOT_REPOSITORY_URL = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+}
+
 apply plugin: "com.vanniktech.maven.publish"
 
 repositories {
@@ -60,7 +67,19 @@ tasks.withType(JavaCompile) {
     options.fork = true
 }
 
-task javadocJar(type: Jar) {
-    archiveClassifier.set('javadoc')
-    from javadoc
+javadoc {
+    options {
+        encoding 'UTF-8'
+        charSet 'UTF-8'
+    }
+}
+
+// https://github.com/vanniktech/gradle-maven-publish-plugin/issues/206
+// for closeAndReleaseRepository task
+mavenPublish {
+    nexus {
+        baseUrl = "https://s01.oss.sonatype.org/service/local/"
+        repositoryUsername = mavenCentralRepositoryUsername
+        repositoryPassword = mavenCentralRepositoryPassword
+    }
 }
