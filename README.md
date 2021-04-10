@@ -1,6 +1,16 @@
 # poi-tl-ext
 ![GitHub](https://img.shields.io/github/license/draco1023/poi-tl-ext) ![JDK](https://img.shields.io/badge/jdk-1.8-blue)
 
+# Maven
+
+```xml
+<dependency>
+    <groupId>io.github.draco1023</groupId>
+    <artifactId>poi-tl-ext</artifactId>
+    <version>0.1</version>
+</dependency>
+```
+
 # 扩展功能
 - 支持渲染`HTML`字符串，插件`HtmlRenderPolicy`的使用方法如下（也可参考[文档](http://deepoove.com/poi-tl/#_%E4%BD%BF%E7%94%A8%E6%8F%92%E4%BB%B6)）
 
