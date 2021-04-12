@@ -85,6 +85,7 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
     private static final String FORMATTED_REPLACEMENT = "><";
     private final String globalFont;
     private final int globalFontSizeInHalfPoints;
+    private boolean debug;
 
     public HtmlRenderPolicy() {
         this(null, null);
@@ -134,7 +135,7 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
         Document document = Jsoup.parseBodyFragment(html);
 
         HtmlRenderContext htmlRenderContext = new HtmlRenderContext(context);
-        htmlRenderContext.setDebug(true);
+        htmlRenderContext.setDebug(debug);
         htmlRenderContext.setGlobalFont(globalFont);
         if (globalFontSizeInHalfPoints > 0) {
             htmlRenderContext.setGlobalFontSize(BigInteger.valueOf(globalFontSizeInHalfPoints));
@@ -158,7 +159,7 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
 
     private void renderElement(Element element, HtmlRenderContext context) {
         if (context.isDebug()) {
-            log.debug(element.normalName());
+            log.info("Start rendering html tag: <{}{}>", element.normalName(), element.attributes());
         }
         if (element.tag().isFormListed()) {
             return;
@@ -471,4 +472,7 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
         }
     }
 
+    public void setDebug(boolean debug) {
+        this.debug = debug;
+    }
 }
