@@ -54,3 +54,4 @@ gradle.properties
 build/
 out/
 .gradletasknamecache
+secring.gpg
