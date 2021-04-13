@@ -1,0 +1,86 @@
+/*
+ * Copyright 2016 - 2021 Draco, https://github.com/draco1023
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.vanniktech:gradle-maven-publish-plugin:0.14.2'
+    }
+}
+
+plugins {
+    id 'java-library'
+}
+
+// https://github.com/vanniktech/gradle-maven-publish-plugin/issues/206
+// change domain before applying the plugin
+ext {
+    RELEASE_REPOSITORY_URL = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+    SNAPSHOT_REPOSITORY_URL = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+}
+
+apply plugin: "com.vanniktech.maven.publish"
+
+repositories {
+    mavenLocal()
+    jcenter()
+    mavenCentral()
+}
+
+dependencies {
+    api 'com.deepoove:poi-tl:1.9.1'
+    api 'org.apache.poi:ooxml-schemas:1.4'
+    api 'org.apache.commons:commons-lang3:3.10'
+    api 'commons-io:commons-io:2.6'
+    implementation 'net.sourceforge.cssparser:cssparser:0.9.29'
+    implementation 'org.jsoup:jsoup:1.12.1'
+    implementation 'net.sf.saxon:Saxon-HE:10.0'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.6.2'
+    testRuntimeOnly 'org.slf4j:slf4j-simple:1.7.7'
+}
+
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
+
+test {
+    useJUnitPlatform()
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+    options.fork = true
+}
+
+javadoc {
+    options {
+        encoding 'UTF-8'
+        charSet 'UTF-8'
+    }
+}
+
+// https://github.com/vanniktech/gradle-maven-publish-plugin/issues/206
+// for closeAndReleaseRepository task
+mavenPublish {
+    nexus {
+        baseUrl = "https://s01.oss.sonatype.org/service/local/"
+        repositoryUsername = mavenCentralRepositoryUsername
+        repositoryPassword = mavenCentralRepositoryPassword
+    }
+}

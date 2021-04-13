@@ -1,0 +1,175 @@
+/*
+ * Copyright 2016 - 2021 Draco, https://github.com/draco1023
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.ddr.poi.html.util;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.poi.xwpf.usermodel.XWPFAbstractNum;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFNumbering;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTAbstractNum;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTInd;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTLvl;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STJc;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STMultiLevelType;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STNumberFormat;
+
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 列表上下文
+ *
+ * @author Draco
+ * @since 2021-02-19
+ */
+public class NumberingContext {
+    /**
+     * 每级缩进
+     */
+    private static final int INDENT = 360;
+    /**
+     * 无序列表符号
+     */
+    public static final String BULLET_CHAR = "⚫";
+    private final XWPFDocument document;
+    private int nextAbstractNumberId;
+    private int nextNumberingLevel;
+
+    private List<STNumberFormat.Enum> numberFormats;
+    private Map<String, BigInteger> numberIdMap = new HashMap<>(4);
+    private List<XWPFParagraph> numberingParagraphs;
+
+    public NumberingContext(XWPFDocument document) {
+        this.document = document;
+    }
+
+    /**
+     * 开始新的列表
+     *
+     * @param format 列表符号类型
+     */
+    public void startLevel(STNumberFormat.Enum format) {
+        int level = nextNumberingLevel++;
+        if (level == 0) {
+            numberingParagraphs = new ArrayList<>(8);
+            numberFormats = new ArrayList<>(4);
+        }
+        numberFormats.add(format);
+    }
+
+    /**
+     * 结束当前列表
+     */
+    public void endLevel() {
+        nextNumberingLevel--;
+        if (nextNumberingLevel == 0) {
+            String key = getFormatKey();
+            BigInteger numberId = getNumberId(key);
+
+            for (XWPFParagraph paragraph : numberingParagraphs) {
+                paragraph.setNumID(numberId);
+            }
+
+            numberingParagraphs = null;
+            numberFormats = null;
+        }
+    }
+
+    /**
+     * 新增段落
+     *
+     * @param paragraph 段落
+     */
+    public void add(XWPFParagraph paragraph) {
+        if (numberingParagraphs == null) {
+            throw new IllegalStateException("Call startLevel method first");
+        }
+        paragraph.setNumILvl(BigInteger.valueOf(nextNumberingLevel - 1));
+        numberingParagraphs.add(paragraph);
+    }
+
+    /**
+     * 获取列表ID
+     *
+     * @param key Key
+     * @return 列表ID
+     */
+    private BigInteger getNumberId(String key) {
+        BigInteger numberId = null;
+        for (Map.Entry<String, BigInteger> entry : numberIdMap.entrySet()) {
+            if (entry.getKey().startsWith(key)) {
+                numberId = entry.getValue();
+                break;
+            }
+        }
+        if (numberId == null) {
+            XWPFNumbering numbering = document.createNumbering();
+            while (true) {
+                BigInteger abstractNumberId = BigInteger.valueOf(nextAbstractNumberId++);
+                XWPFAbstractNum abstractNum = numbering.getAbstractNum(abstractNumberId);
+                if (abstractNum == null) {
+                    CTAbstractNum ctAbstractNum = CTAbstractNum.Factory.newInstance();
+                    ctAbstractNum.setAbstractNumId(abstractNumberId);
+                    ctAbstractNum.addNewMultiLevelType().setVal(STMultiLevelType.HYBRID_MULTILEVEL);
+
+                    for (int i = 0; i < numberFormats.size(); i++) {
+                        STNumberFormat.Enum format = numberFormats.get(i);
+                        CTLvl cTLvl = ctAbstractNum.addNewLvl();
+                        CTInd ind = cTLvl.addNewPPr().addNewInd();
+                        ind.setLeft(BigInteger.valueOf(INDENT * i));
+
+                        cTLvl.addNewNumFmt().setVal(format);
+                        cTLvl.addNewLvlText().setVal(format == STNumberFormat.BULLET ? BULLET_CHAR : getOrderedLevelText(i));
+                        cTLvl.addNewStart().setVal(BigInteger.ONE);
+                        cTLvl.setIlvl(BigInteger.valueOf(i));
+                        cTLvl.addNewLvlJc().setVal(STJc.LEFT);
+                    }
+
+                    numbering.addAbstractNum(new XWPFAbstractNum(ctAbstractNum, numbering));
+                    numberId = numbering.addNum(abstractNumberId);
+
+                    numberIdMap.put(key, numberId);
+                    break;
+                }
+            }
+        }
+        return numberId;
+    }
+
+    /**
+     * 获取有序列表项的序号格式
+     *
+     * @param i 索引，从0开始
+     * @return 序号格式
+     */
+    private String getOrderedLevelText(int i) {
+        return "%" + (i + 1) + ".";
+    }
+
+    private String getFormatKey() {
+        StringBuilder sb = new StringBuilder();
+        for (STNumberFormat.Enum format : numberFormats) {
+            sb.append(format.intValue()).append(StringUtils.SPACE);
+        }
+        return sb.toString();
+    }
+
+}
