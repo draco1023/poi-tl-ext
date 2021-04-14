@@ -24,10 +24,7 @@ class LaTeXRenderPolicyTest {
         data.put("math1", "$$ x+2=3 $$");
         data.put("math2", "\\[ \\sum_{i=1}^{\\infty} \\frac{1}{n^s} \n" +
                 "= \\prod_p \\frac{1}{1 - p^{-s}} \\]");
-        // FIXME Mixed string not supported yet
-//        data.put("math3", "Product $\\prod_{i=a}^{b} f(i)$ inside text");
-        data.put("math3", "$\\prod_{i=a}^{b} f(i)$");
-        // FIXME \to not supported yet
+        data.put("math3", "Product $\\prod_{i=a}^{b} f(i)$ inside text. $\\mathbb{N} \\mathbf{N} \\mathbb{Z} \\mathbf{Z} \\mathbb{D} \\mathbf{D} \\mathbb{Q} \\mathbf{Q} \\mathbb{R} \\mathbf{R} \\mathbb{C} \\mathbf{C}$");
         data.put("math4", "$\\lim_{x\\to\\infty} f(x)$");
         try (InputStream inputStream = LaTeXRenderPolicyTest.class.getResourceAsStream("/math.docx")) {
             XWPFTemplate.compile(inputStream, configure).render(data).writeToFile("latex_out.docx");

@@ -27,3 +27,4 @@
   _目前实现了富文本编辑器可实现的大部分效果，后续继续改进..._
 
 - 支持渲染`MathML`字符串，插件类为`MathMLRenderPolicy`
+- 支持渲染`LaTeX`字符串，插件类为`LaTeXRenderPolicy`
