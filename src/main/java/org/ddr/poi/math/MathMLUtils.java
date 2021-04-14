@@ -28,6 +28,7 @@ import org.apache.xmlbeans.XmlException;
 import org.openxmlformats.schemas.officeDocument.x2006.math.CTOMath;
 import org.openxmlformats.schemas.officeDocument.x2006.math.CTR;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTFonts;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTP;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,7 +37,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.io.StringWriter;
-import java.util.List;
 
 /**
  * MathML工具类
@@ -48,6 +48,12 @@ public class MathMLUtils {
     private static final Logger log = LoggerFactory.getLogger(MathMLUtils.class);
     private static final String MATH_FONT = "Cambria Math";
 
+    /**
+     * 将MathML渲染到段落中
+     *
+     * @param paragraph 段落
+     * @param math MathML字符串
+     */
     public static void renderTo(XWPFParagraph paragraph, String math) {
         if (log.isDebugEnabled()) {
             log.info("Start rendering MathML: {}", math);
@@ -102,9 +108,9 @@ public class MathMLUtils {
      * @param omath 由mathml转换得到的omath字符串
      */
     private static void addMath(XWPFParagraph paragraph, String omath) throws XmlException {
-        CTOMath omathPara = CTOMath.Factory.parse(omath);
+        CTOMath ctoMath = CTOMath.Factory.parse(omath);
         // 老版本Office可能无法正常显示，强制设置公式字体
-        XmlCursor xmlCursor = omathPara.newCursor();
+        XmlCursor xmlCursor = ctoMath.newCursor();
         while (xmlCursor.hasNextToken()) {
             XmlCursor.TokenType tokenType = xmlCursor.toNextToken();
             if (tokenType == XmlCursor.TokenType.START) {
@@ -119,7 +125,8 @@ public class MathMLUtils {
         }
         xmlCursor.dispose();
 
-        List<CTOMath> oMathList = paragraph.getCTP().getOMathList();
-        oMathList.add(omathPara.getOMathArray(0));
+        CTP ctp = paragraph.getCTP();
+        ctp.addNewOMath();
+        ctp.setOMathArray(ctp.sizeOfOMathArray() - 1, ctoMath.getOMathArray(0));
     }
 }
