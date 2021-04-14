@@ -52,6 +52,6 @@ public class MathMLRenderPolicy extends AbstractRenderPolicy<String> {
 
     @Override
     protected void afterRender(RenderContext<String> context) {
-        clearPlaceholder(context, true);
+        clearPlaceholder(context, false);
     }
 }
