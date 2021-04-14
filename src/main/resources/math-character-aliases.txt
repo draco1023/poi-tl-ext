@@ -1,0 +1,3 @@
+to->rightarrow
+gets->leftarrow
+implies->Longrightarrow
