@@ -75,7 +75,7 @@ public class TableRenderer implements ElementRenderer {
 
         CSSLength width = CSSLength.of(widthDeclaration);
         boolean explicitWidth = width.isValid() && !width.isPercent();
-        int originWidth = width.isValid() ? context.lengthToEMU(width) : containerWidth;
+        int originWidth = width.isValid() ? (width.isPercent() ? (int) (width.unitValue() * containerWidth) : context.lengthToEMU(width)) : containerWidth;
         int tableWidth = context.computeLengthInEMU(widthDeclaration, styleDeclaration.getMaxWidth(), containerWidth, containerWidth);
         Element colgroup = JsoupUtils.firstChild(element, HtmlConstants.TAG_COLGROUP);
         if (colgroup != null) {
