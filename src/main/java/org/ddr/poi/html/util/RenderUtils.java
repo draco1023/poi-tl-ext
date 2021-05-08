@@ -26,10 +26,12 @@ import org.apache.poi.util.Units;
 import org.apache.poi.xwpf.usermodel.BodyType;
 import org.apache.poi.xwpf.usermodel.IBody;
 import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
+import org.apache.poi.xwpf.usermodel.TableRowAlign;
 import org.apache.poi.xwpf.usermodel.TableWidthType;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
+import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.xmlbeans.XmlCursor;
 import org.apache.xmlbeans.XmlString;
@@ -47,11 +49,16 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTRPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTShd;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTStyle;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTbl;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblBorders;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblWidth;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTc;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcBorders;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTUnderline;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STBorder;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STTblWidth;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STUnderline;
 import org.w3c.css.sac.InputSource;
 import org.w3c.dom.css.CSSValue;
@@ -85,14 +92,6 @@ public class RenderUtils {
      * 边框宽度每像素对应值
      */
     public static final int BORDER_WIDTH_PER_PX = 4;
-    /**
-     * 边框纵向间距
-     */
-    public static final BigInteger VERTICAL_SPACE = BigInteger.ONE;
-    /**
-     * 边框横向间距
-     */
-    public static final BigInteger HORIZONTAL_SPACE = BigInteger.valueOf(4);
     /**
      * 最小边框宽度
      */
@@ -296,14 +295,7 @@ public class RenderUtils {
         }
 
         // border
-        setBorder(paragraph, cssStyleDeclaration, HtmlConstants.CSS_BORDER_TOP_STYLE, HtmlConstants.CSS_BORDER_TOP_WIDTH,
-                HtmlConstants.CSS_BORDER_TOP_COLOR, RenderUtils::getTop, VERTICAL_SPACE);
-        setBorder(paragraph, cssStyleDeclaration, HtmlConstants.CSS_BORDER_RIGHT_STYLE, HtmlConstants.CSS_BORDER_RIGHT_WIDTH,
-                HtmlConstants.CSS_BORDER_RIGHT_COLOR, RenderUtils::getRight, HORIZONTAL_SPACE);
-        setBorder(paragraph, cssStyleDeclaration, HtmlConstants.CSS_BORDER_BOTTOM_STYLE, HtmlConstants.CSS_BORDER_BOTTOM_WIDTH,
-                HtmlConstants.CSS_BORDER_BOTTOM_COLOR, RenderUtils::getBottom, VERTICAL_SPACE);
-        setBorder(paragraph, cssStyleDeclaration, HtmlConstants.CSS_BORDER_LEFT_STYLE, HtmlConstants.CSS_BORDER_LEFT_WIDTH,
-                HtmlConstants.CSS_BORDER_LEFT_COLOR, RenderUtils::getLeft, HORIZONTAL_SPACE);
+        setBorder(paragraph, cssStyleDeclaration);
 
         // TODO spacing
 
@@ -364,25 +356,23 @@ public class RenderUtils {
     /**
      * 设置段落边框样式
      *
-     * @param paragraph 段落
+     * @param xwpfElement 段落
      * @param cssStyleDeclaration CSS边框样式声明
      * @param styleProperty CSS边框属性名称
      * @param widthProperty CSS边框宽度名称
      * @param colorProperty CSS边框颜色名称
      * @param getter 获取边框对象的方式
-     * @param space 边框间距
+     * @return 边框是否为none
      */
-    private static void setBorder(XWPFParagraph paragraph, CSSStyleDeclarationImpl cssStyleDeclaration,
-                                  String styleProperty, String widthProperty, String colorProperty,
-                                  Function<CTPBdr, CTBorder> getter, BigInteger space) {
+    private static boolean setBorder(Object xwpfElement, CSSStyleDeclarationImpl cssStyleDeclaration,
+                                     String styleProperty, String widthProperty, String colorProperty,
+                                     Function<Object, CTBorder> getter) {
         String borderStyle = cssStyleDeclaration.getPropertyValue(styleProperty);
         STBorder.Enum style = borderStyle(borderStyle);
         String borderWidth = cssStyleDeclaration.getPropertyValue(widthProperty);
         CSSLength width = CSSLength.of(borderWidth);
         if (style != null && (!width.isValid() || width.getValue() > 0)) {
-            CTPPr pPr = getPPr(paragraph.getCTP());
-            CTPBdr pBdr = getPBdr(pPr);
-            CTBorder border = getter.apply(pBdr);
+            CTBorder border = getter.apply(xwpfElement);
             border.setVal(style);
 
             String borderColor = cssStyleDeclaration.getPropertyValue(colorProperty);
@@ -400,9 +390,8 @@ public class RenderUtils {
             } else {
                 border.setSz(BigInteger.valueOf(BORDER_WIDTH_PER_PX));
             }
-
-            border.setSpace(space);
         }
+        return style == STBorder.NONE || style == STBorder.NIL;
     }
 
     /**
@@ -431,25 +420,95 @@ public class RenderUtils {
             case HtmlConstants.RIDGE:
             case HtmlConstants.OUTSET:
                 return STBorder.OUTSET;
+            case HtmlConstants.NONE:
+                return STBorder.NONE;
             default:
                 return null;
         }
     }
 
-    public static CTBorder getTop(CTPBdr pBdr) {
-        return pBdr.isSetTop() ? pBdr.getTop() : pBdr.addNewTop();
+    private static CTBorder getTop(Object e) {
+        if (e instanceof XWPFParagraph) {
+            XWPFParagraph paragraph = (XWPFParagraph) e;
+            CTPPr pPr = getPPr(paragraph.getCTP());
+            CTPBdr pBdr = getPBdr(pPr);
+            return pBdr.isSetTop() ? pBdr.getTop() : pBdr.addNewTop();
+        } else if (e instanceof XWPFTable) {
+            XWPFTable table = (XWPFTable) e;
+            CTTblPr tblPr = getTblPr(table.getCTTbl());
+            CTTblBorders tblBorders = getTblBorders(tblPr);
+            return tblBorders.isSetTop() ? tblBorders.getTop() : tblBorders.addNewTop();
+        } else if (e instanceof XWPFTableCell) {
+            XWPFTableCell cell = (XWPFTableCell) e;
+            CTTcPr tcPr = getTcPr(cell.getCTTc());
+            CTTcBorders tcBorders = getTcBorders(tcPr);
+            return tcBorders.isSetTop() ? tcBorders.getTop() : tcBorders.addNewTop();
+        } else {
+            throw new UnsupportedOperationException("Can not get top border of " + e.getClass().getName());
+        }
     }
 
-    public static CTBorder getRight(CTPBdr pBdr) {
-        return pBdr.isSetRight() ? pBdr.getRight() : pBdr.addNewRight();
+    private static CTBorder getRight(Object e) {
+        if (e instanceof XWPFParagraph) {
+            XWPFParagraph paragraph = (XWPFParagraph) e;
+            CTPPr pPr = getPPr(paragraph.getCTP());
+            CTPBdr pBdr = getPBdr(pPr);
+            return pBdr.isSetRight() ? pBdr.getRight() : pBdr.addNewRight();
+        } else if (e instanceof XWPFTable) {
+            XWPFTable table = (XWPFTable) e;
+            CTTblPr tblPr = getTblPr(table.getCTTbl());
+            CTTblBorders tblBorders = getTblBorders(tblPr);
+            return tblBorders.isSetRight() ? tblBorders.getRight() : tblBorders.addNewRight();
+        } else if (e instanceof XWPFTableCell) {
+            XWPFTableCell cell = (XWPFTableCell) e;
+            CTTcPr tcPr = getTcPr(cell.getCTTc());
+            CTTcBorders tcBorders = getTcBorders(tcPr);
+            return tcBorders.isSetRight() ? tcBorders.getRight() : tcBorders.addNewRight();
+        } else {
+            throw new UnsupportedOperationException("Can not get right border of " + e.getClass().getName());
+        }
     }
 
-    public static CTBorder getBottom(CTPBdr pBdr) {
-        return pBdr.isSetBottom() ? pBdr.getBottom() : pBdr.addNewBottom();
+    private static CTBorder getBottom(Object e) {
+        if (e instanceof XWPFParagraph) {
+            XWPFParagraph paragraph = (XWPFParagraph) e;
+            CTPPr pPr = getPPr(paragraph.getCTP());
+            CTPBdr pBdr = getPBdr(pPr);
+            return pBdr.isSetBottom() ? pBdr.getBottom() : pBdr.addNewBottom();
+        } else if (e instanceof XWPFTable) {
+            XWPFTable table = (XWPFTable) e;
+            CTTblPr tblPr = getTblPr(table.getCTTbl());
+            CTTblBorders tblBorders = getTblBorders(tblPr);
+            return tblBorders.isSetBottom() ? tblBorders.getBottom() : tblBorders.addNewBottom();
+        } else if (e instanceof XWPFTableCell) {
+            XWPFTableCell cell = (XWPFTableCell) e;
+            CTTcPr tcPr = getTcPr(cell.getCTTc());
+            CTTcBorders tcBorders = getTcBorders(tcPr);
+            return tcBorders.isSetBottom() ? tcBorders.getBottom() : tcBorders.addNewBottom();
+        } else {
+            throw new UnsupportedOperationException("Can not get bottom border of " + e.getClass().getName());
+        }
     }
 
-    public static CTBorder getLeft(CTPBdr pBdr) {
-        return pBdr.isSetLeft() ? pBdr.getLeft() : pBdr.addNewLeft();
+    private static CTBorder getLeft(Object e) {
+        if (e instanceof XWPFParagraph) {
+            XWPFParagraph paragraph = (XWPFParagraph) e;
+            CTPPr pPr = getPPr(paragraph.getCTP());
+            CTPBdr pBdr = getPBdr(pPr);
+            return pBdr.isSetLeft() ? pBdr.getLeft() : pBdr.addNewLeft();
+        } else if (e instanceof XWPFTable) {
+            XWPFTable table = (XWPFTable) e;
+            CTTblPr tblPr = getTblPr(table.getCTTbl());
+            CTTblBorders tblBorders = getTblBorders(tblPr);
+            return tblBorders.isSetLeft() ? tblBorders.getLeft() : tblBorders.addNewLeft();
+        } else if (e instanceof XWPFTableCell) {
+            XWPFTableCell cell = (XWPFTableCell) e;
+            CTTcPr tcPr = getTcPr(cell.getCTTc());
+            CTTcBorders tcBorders = getTcBorders(tcPr);
+            return tcBorders.isSetLeft() ? tcBorders.getLeft() : tcBorders.addNewLeft();
+        } else {
+            throw new UnsupportedOperationException("Can not get left border of " + e.getClass().getName());
+        }
     }
 
     /**
@@ -503,6 +562,195 @@ public class RenderUtils {
             c.toNextToken();
             c.insertAttributeWithValue(new QName("http://www.w3.org/XML/1998/namespace", "space"), "preserve");
             c.dispose();
+        }
+    }
+
+    /**
+     * 应用表格样式
+     *
+     * @param context 渲染上下文
+     * @param table 表格
+     * @param cssStyleDeclaration CSS样式声明
+     */
+    public static void tableStyle(HtmlRenderContext context, XWPFTable table, CSSStyleDeclarationImpl cssStyleDeclaration) {
+        if (EMPTY_STYLE.equals(cssStyleDeclaration)) {
+            return;
+        }
+
+        // alignment
+        TableRowAlign align = alignTable(cssStyleDeclaration.getPropertyValue(HtmlConstants.CSS_FLOAT));
+        if (align != null) {
+            table.setTableAlignment(align);
+        }
+
+        // border
+        boolean allNone = setBorder(table, cssStyleDeclaration);
+        // 如果四边都是none则将单元格间的边框也置为none
+        if (allNone) {
+            CTTblPr tblPr = getTblPr(table.getCTTbl());
+            CTTblBorders tblBorders = getTblBorders(tblPr);
+            CTBorder insideH = tblBorders.isSetInsideH() ? tblBorders.getInsideH() : tblBorders.addNewInsideH();
+            insideH.setVal(STBorder.NONE);
+            CTBorder insideV = tblBorders.isSetInsideV() ? tblBorders.getInsideV() : tblBorders.addNewInsideV();
+            insideV.setVal(STBorder.NONE);
+        }
+
+        // indent
+        String marginLeft = cssStyleDeclaration.getPropertyValue(HtmlConstants.CSS_MARGIN_LEFT);
+        if (StringUtils.isNotBlank(marginLeft)) {
+            indent(context, table, marginLeft);
+        }
+
+        // background
+        String backgroundColor = cssStyleDeclaration.getBackgroundColor();
+        if (StringUtils.isNotBlank(backgroundColor)) {
+            String color = Colors.fromStyle(backgroundColor, null);
+            if (color != null) {
+                CTTblPr tblPr = getTblPr(table.getCTTbl());
+                CTShd shd = getShd(tblPr);
+                shd.setFill(color);
+            }
+        }
+    }
+
+
+    /**
+     * 应用表格样式
+     *
+     * @param context 渲染上下文
+     * @param cell 表格
+     * @param cssStyleDeclaration CSS样式声明
+     */
+    public static void cellStyle(HtmlRenderContext context, XWPFTableCell cell, CSSStyleDeclarationImpl cssStyleDeclaration) {
+        if (EMPTY_STYLE.equals(cssStyleDeclaration)) {
+            return;
+        }
+
+        // TODO padding
+
+        // alignment
+        XWPFTableCell.XWPFVertAlign align = alignTableCell(cssStyleDeclaration.getVerticalAlign());
+        if (align != null) {
+            cell.setVerticalAlignment(align);
+        }
+
+        // border
+        setBorder(cell, cssStyleDeclaration);
+
+        // background
+        String backgroundColor = cssStyleDeclaration.getBackgroundColor();
+        if (StringUtils.isNotBlank(backgroundColor)) {
+            String color = Colors.fromStyle(backgroundColor, null);
+            if (color != null) {
+                CTTcPr tcPr = getTcPr(cell.getCTTc());
+                CTShd shd = getShd(tcPr);
+                shd.setFill(color);
+            }
+        }
+    }
+
+    /**
+     * 设置上下左右边框样式
+     *
+     * @param xwpfElement 元素
+     * @param cssStyleDeclaration CSS样式声明
+     * @return 是否四边全部为none
+     */
+    public static boolean setBorder(Object xwpfElement, CSSStyleDeclarationImpl cssStyleDeclaration) {
+        boolean topNone = setBorder(xwpfElement, cssStyleDeclaration, HtmlConstants.CSS_BORDER_TOP_STYLE,
+                HtmlConstants.CSS_BORDER_TOP_WIDTH, HtmlConstants.CSS_BORDER_TOP_COLOR, RenderUtils::getTop);
+        boolean rightNone = setBorder(xwpfElement, cssStyleDeclaration, HtmlConstants.CSS_BORDER_RIGHT_STYLE,
+                HtmlConstants.CSS_BORDER_RIGHT_WIDTH, HtmlConstants.CSS_BORDER_RIGHT_COLOR, RenderUtils::getRight);
+        boolean bottomNone = setBorder(xwpfElement, cssStyleDeclaration, HtmlConstants.CSS_BORDER_BOTTOM_STYLE,
+                HtmlConstants.CSS_BORDER_BOTTOM_WIDTH, HtmlConstants.CSS_BORDER_BOTTOM_COLOR, RenderUtils::getBottom);
+        boolean leftNone = setBorder(xwpfElement, cssStyleDeclaration, HtmlConstants.CSS_BORDER_LEFT_STYLE,
+                HtmlConstants.CSS_BORDER_LEFT_WIDTH, HtmlConstants.CSS_BORDER_LEFT_COLOR, RenderUtils::getLeft);
+        return topNone && rightNone && bottomNone && leftNone;
+    }
+
+    private static boolean indent(HtmlRenderContext context, XWPFTable table, String style) {
+        CSSLength cssLength = CSSLength.of(style.toLowerCase());
+        if (cssLength.isValid() && cssLength.getValue() > 0) {
+            CTTblPr tblPr = getTblPr(table.getCTTbl());
+            CTTblWidth ind = getInd(tblPr);
+            double indent;
+            if (cssLength.isPercent()) {
+                indent = context.getAvailableWidthInEMU() * cssLength.unitValue() / CSSLengthUnit.TWIP.absoluteFactor();
+            } else {
+                indent = context.lengthToEMU(cssLength) / CSSLengthUnit.TWIP.absoluteFactor();
+            }
+            ind.setType(STTblWidth.DXA);
+            ind.setW(BigInteger.valueOf(Math.round(indent)));
+            return true;
+        }
+        return false;
+    }
+
+    public static CTTblWidth getInd(CTTblPr tblPr) {
+        return tblPr.isSetTblInd() ? tblPr.getTblInd() : tblPr.addNewTblInd();
+    }
+
+    public static CTTblBorders getTblBorders(CTTblPr tblPr) {
+        return tblPr.isSetTblBorders() ? tblPr.getTblBorders() : tblPr.addNewTblBorders();
+    }
+
+    public static CTShd getShd(CTTblPr tblPr) {
+        return tblPr.isSetShd() ? tblPr.getShd() : tblPr.addNewShd();
+    }
+
+    public static CTTblPr getTblPr(CTTbl ctTbl) {
+        CTTblPr tblPr = ctTbl.getTblPr();
+        if (tblPr == null) {
+            tblPr = ctTbl.addNewTblPr();
+        }
+        return tblPr;
+    }
+
+    public static CTTcBorders getTcBorders(CTTcPr tcPr) {
+        return tcPr.isSetTcBorders() ? tcPr.getTcBorders() : tcPr.addNewTcBorders();
+    }
+
+    public static CTShd getShd(CTTcPr tcPr) {
+        return tcPr.isSetShd() ? tcPr.getShd() : tcPr.addNewShd();
+    }
+
+    /**
+     * 表格对齐值映射
+     *
+     * @param cssFloat 表格对齐样式值
+     * @return Word表格对齐枚举
+     */
+    public static TableRowAlign alignTable(String cssFloat) {
+        if (StringUtils.isBlank(cssFloat)) {
+            return null;
+        }
+        switch (cssFloat.toLowerCase()) {
+            case HtmlConstants.LEFT:
+                return TableRowAlign.LEFT;
+            case HtmlConstants.RIGHT:
+                return TableRowAlign.RIGHT;
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * 表格单元格垂直对齐值映射
+     *
+     * @param verticalAlign 垂直对齐值
+     * @return Word表格单元格垂直对齐枚举
+     */
+    public static XWPFTableCell.XWPFVertAlign alignTableCell(String verticalAlign) {
+        if (StringUtils.isBlank(verticalAlign)) {
+            return null;
+        }
+        switch (verticalAlign.toLowerCase()) {
+            case HtmlConstants.MIDDLE:
+                return XWPFTableCell.XWPFVertAlign.CENTER;
+            case HtmlConstants.BOTTOM:
+                return XWPFTableCell.XWPFVertAlign.BOTTOM;
+            default:
+                return XWPFTableCell.XWPFVertAlign.TOP;
         }
     }
 }

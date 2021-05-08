@@ -391,7 +391,7 @@ public class HtmlRenderContext extends RenderContext<String> {
      */
     public CSSStyleDeclarationImpl currentElementStyle() {
         InlineStyle inlineStyle = inlineStyles.peek();
-        return inlineStyle == null ? null : inlineStyle.getDeclaration();
+        return inlineStyle == null ? RenderUtils.EMPTY_STYLE : inlineStyle.getDeclaration();
     }
 
     /**
@@ -687,6 +687,7 @@ public class HtmlRenderContext extends RenderContext<String> {
             case VMAX:
                 emu = length.unitValue() * Math.max(getPageWidth().toEMU(), getPageHeight().toEMU());
                 break;
+            // Unable to determine the use of width or height as a relative length for percent unit
             default:
                 throw new UnsupportedOperationException("Can not convert to EMU with length: " + length);
         }

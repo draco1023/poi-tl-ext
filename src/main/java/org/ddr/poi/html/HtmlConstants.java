@@ -60,6 +60,7 @@ public interface HtmlConstants {
      */
     String TAG_BIG = "big";
     String TAG_SMALL = "small";
+    String TAG_CAPTION = "caption";
     String TAG_COLGROUP = "colgroup";
     String TAG_COL = "col";
     String TAG_TR = "tr";
@@ -147,6 +148,7 @@ public interface HtmlConstants {
     String CSS_BORDER_RIGHT_COLOR = "border-right-color";
     String CSS_BORDER_BOTTOM_COLOR = "border-bottom-color";
     String CSS_BORDER_LEFT_COLOR = "border-left-color";
+    String CSS_FLOAT = "float";
 
     String NORMAL = "normal";
     String ITALIC = "italic";
@@ -162,6 +164,9 @@ public interface HtmlConstants {
     String CENTER = "center";
     String JUSTIFY = "justify";
     String JUSTIFY_ALL = "justify-all";
+    String TOP = "top";
+    String BOTTOM = "bottom";
+    String MIDDLE = "middle";
 
     String XX_SMALL = "xx-small";
     String X_SMALL = "x-small";
