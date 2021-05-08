@@ -207,7 +207,8 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
                 // 新增时会自动创建一行一列，会影响自定义的表格渲染逻辑，故删除
                 xwpfTable.removeRow(0);
                 context.replaceClosestBody(xwpfTable);
-                // TODO extract styles
+
+                RenderUtils.tableStyle(context, xwpfTable, cssStyleDeclaration);
             } else {
                 XWPFParagraph xwpfParagraph = container.insertNewParagraph(xmlCursor);
                 xmlCursor.dispose();

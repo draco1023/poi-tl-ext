@@ -16,12 +16,14 @@
 
 package org.ddr.poi.html.tag;
 
+import com.steadystate.css.dom.CSSStyleDeclarationImpl;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.ddr.poi.html.ElementRenderer;
 import org.ddr.poi.html.HtmlConstants;
 import org.ddr.poi.html.HtmlRenderContext;
+import org.ddr.poi.html.util.RenderUtils;
 import org.jsoup.nodes.Element;
 
 /**
@@ -42,12 +44,15 @@ public class TableCellRenderer implements ElementRenderer {
      */
     @Override
     public boolean renderStart(Element element, HtmlRenderContext context) {
+        CSSStyleDeclarationImpl styleDeclaration = context.currentElementStyle();
         int row = NumberUtils.toInt(element.attr(HtmlConstants.ATTR_ROW_INDEX));
         int column = NumberUtils.toInt(element.attr(HtmlConstants.ATTR_COLUMN_INDEX));
         XWPFTable table = context.getClosestTable();
         XWPFTableCell cell = table.getRow(row).getCell(column);
         context.pushContainer(cell);
         context.pushClosestBody(cell.getParagraphArray(0));
+
+        RenderUtils.cellStyle(context, cell, styleDeclaration);
 
         return true;
     }

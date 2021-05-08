@@ -50,7 +50,7 @@ class MathMLRenderPolicyTest {
         }
         Collections.shuffle(mathList);
         Map<String, Object> data = new HashMap<>(mathList.size());
-        // FIXME 公式单独占用一个段落会被清空
+
         for (int i = 0; i < mathList.size(); i++) {
             data.put("math" + (i + 1), mathList.get(i));
         }
