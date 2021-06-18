@@ -76,7 +76,7 @@ public class TableRenderer implements ElementRenderer {
         CSSLength width = CSSLength.of(widthDeclaration);
         boolean explicitWidth = width.isValid() && !width.isPercent();
         int tableWidth = context.computeLengthInEMU(widthDeclaration, styleDeclaration.getMaxWidth(), containerWidth, containerWidth);
-        int originWidth = width.isPercent() ? tableWidth : context.lengthToEMU(width);
+        int originWidth = !width.isValid() || width.isPercent() ? tableWidth : context.lengthToEMU(width);
 
         // FIXME poi不支持设置tblCaption
 //        Element caption = JsoupUtils.firstChild(element, HtmlConstants.TAG_CAPTION);

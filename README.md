@@ -7,7 +7,7 @@
 <dependency>
     <groupId>io.github.draco1023</groupId>
     <artifactId>poi-tl-ext</artifactId>
-    <version>0.3.2</version>
+    <version>0.3.3</version>
 </dependency>
 ```
 

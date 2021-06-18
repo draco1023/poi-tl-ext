@@ -23,10 +23,13 @@ import com.steadystate.css.dom.CSSValueImpl;
 import com.steadystate.css.dom.Property;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
+import org.apache.poi.xwpf.usermodel.BodyElementType;
+import org.apache.poi.xwpf.usermodel.BodyType;
 import org.apache.poi.xwpf.usermodel.IBody;
 import org.apache.poi.xwpf.usermodel.IBodyElement;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.xmlbeans.XmlCursor;
 import org.ddr.poi.html.tag.ARenderer;
 import org.ddr.poi.html.tag.BigRenderer;
@@ -68,6 +71,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.math.BigInteger;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -242,6 +246,14 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
     @Override
     protected void afterRender(RenderContext<String> context) {
         clearPlaceholder(context, true);
+        IBody container = context.getContainer();
+        if (container.getPartType() == BodyType.TABLECELL) {
+            // 单元格的最后一个元素应为p，否则可能无法正常打开文件
+            List<IBodyElement> bodyElements = container.getBodyElements();
+            if (bodyElements.isEmpty() || bodyElements.get(bodyElements.size() - 1).getElementType() != BodyElementType.PARAGRAPH) {
+                ((XWPFTableCell) container).addParagraph();
+            }
+        }
     }
 
     private CSSStyleDeclarationImpl getCssStyleDeclaration(Element element) {

@@ -56,7 +56,7 @@ public class CSSLength {
 
     @Override
     public String toString() {
-        return String.format("%.2f", value) + unit.getLiteral();
+        return String.format("%.2f", value) + (unit == null ? "" : unit.getLiteral());
     }
 
     /**
