@@ -42,7 +42,7 @@ public class MathRenderer implements ElementRenderer {
     public boolean renderStart(Element element, HtmlRenderContext context) {
         String math = element.outerHtml();
 
-        MathMLUtils.renderTo(context.getClosestParagraph(), math);
+        MathMLUtils.renderTo(context.getClosestParagraph(), null, math);
 
         return false;
     }

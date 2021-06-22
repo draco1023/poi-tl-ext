@@ -47,7 +47,7 @@ public class MathMLRenderPolicy extends AbstractRenderPolicy<String> {
             math.attr("xmlns", "http://www.w3.org/1998/Math/MathML");
         }
         String mathml = math.outerHtml();
-        MathMLUtils.renderTo((XWPFParagraph) context.getRun().getParent(), mathml);
+        MathMLUtils.renderTo((XWPFParagraph) context.getRun().getParent(), context.getRun(), mathml);
     }
 
     @Override
