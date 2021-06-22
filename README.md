@@ -12,6 +12,9 @@
 ```
 
 # 扩展功能
+
+在 [poi-tl](https://github.com/Sayi/poi-tl) 的基础上扩展了如下功能：
+
 - 支持渲染`HTML`字符串，插件`HtmlRenderPolicy`的使用方法如下（也可参考[文档](http://deepoove.com/poi-tl/#_%E4%BD%BF%E7%94%A8%E6%8F%92%E4%BB%B6)）
 
   ```java

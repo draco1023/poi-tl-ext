@@ -57,7 +57,7 @@ public class LaTeXRenderPolicy extends AbstractRenderPolicy<String> {
                 String math = XMLUtilities.serializeNode(node,
                         Initializer.SNUGGLE_ENGINE.getDefaultXMLStringOutputOptions());
 
-                MathMLUtils.renderTo(paragraph, math);
+                MathMLUtils.renderTo(paragraph, context.getRun(), math);
             }
         }
     }
