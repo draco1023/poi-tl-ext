@@ -28,9 +28,11 @@ import org.apache.poi.xwpf.usermodel.BodyType;
 import org.apache.poi.xwpf.usermodel.IBody;
 import org.apache.poi.xwpf.usermodel.IBodyElement;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.xmlbeans.XmlCursor;
+import org.apache.xmlbeans.XmlObject;
 import org.ddr.poi.html.tag.ARenderer;
 import org.ddr.poi.html.tag.BigRenderer;
 import org.ddr.poi.html.tag.BoldRenderer;
@@ -61,6 +63,9 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
 import org.jsoup.nodes.TextNode;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBookmark;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPPr;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTbl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -175,35 +180,24 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
         context.pushInlineStyle(cssStyleDeclaration, element.isBlock());
 
         ElementRenderer elementRenderer = elRenderers.get(element.normalName());
+        boolean blocked = false;
 
         if (element.isBlock() && (elementRenderer == null || elementRenderer.renderAsBlock())) {
-            IBodyElement closestBody = context.getClosestBody();
-            XmlCursor xmlCursor;
-            switch (closestBody.getElementType()) {
-                case PARAGRAPH:
-                    xmlCursor = ((XWPFParagraph) closestBody).getCTP().newCursor();
-                    break;
-                case TABLE:
-                    xmlCursor = ((XWPFTable) closestBody).getCTTbl().newCursor();
-                    break;
-                default:
-                    return;
+            if (!context.isBlocked()) {
+                // 复制段落中占位符之前的部分内容
+                moveContentToNewPrevParagraph(context);
             }
+            context.incrementBlockLevel();
+            blocked = true;
 
             IBody container = context.getContainer();
             boolean isTableTag = HtmlConstants.TAG_TABLE.equals(element.normalName());
-            // 如果是表格，检查当前word容器的前一个兄弟元素是否为表格，是则插入一个段落，防止表格粘连在一起
-            if (isTableTag && xmlCursor.toPrevSibling()) {
-                if (xmlCursor.getObject() instanceof CTTbl) {
-                    xmlCursor.toEndToken();
-                    xmlCursor.toNextToken();
-                    container.insertNewParagraph(xmlCursor);
-                }
-                xmlCursor.toNextSibling();
-            }
 
-            xmlCursor.toEndToken();
-            xmlCursor.toNextToken();
+            XmlCursor xmlCursor = getElementCursor(context, container, isTableTag);
+            if (xmlCursor == null) {
+                context.decrementBlockLevel();
+                return;
+            }
 
             if (isTableTag) {
                 XWPFTable xwpfTable = container.insertNewTbl(xmlCursor);
@@ -227,8 +221,7 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
 
         if (elementRenderer != null) {
             if (!elementRenderer.renderStart(element, context)) {
-                elementRenderer.renderEnd(element, context);
-                context.popInlineStyle();
+                renderElementEnd(element, context, elementRenderer, blocked);
                 return;
             }
         }
@@ -237,15 +230,100 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
             renderNode(child, context);
         }
 
+        renderElementEnd(element, context, elementRenderer, blocked);
+    }
+
+    private XmlCursor getElementCursor(HtmlRenderContext context, IBody container, boolean isTableTag) {
+        XmlCursor xmlCursor;
+        if (context.containerChanged()) {
+            IBodyElement closestBody = context.getClosestBody();
+            switch (closestBody.getElementType()) {
+                case PARAGRAPH:
+                    xmlCursor = ((XWPFParagraph) closestBody).getCTP().newCursor();
+                    xmlCursor.toEndToken();
+                    xmlCursor.toNextToken();
+                    break;
+                case TABLE:
+                    xmlCursor = ((XWPFTable) closestBody).getCTTbl().newCursor();
+                    xmlCursor.toEndToken();
+                    xmlCursor.toNextToken();
+                    if (isTableTag) {
+                        // 插入一个段落，防止表格粘连在一起
+                        container.insertNewParagraph(xmlCursor);
+                        xmlCursor.toNextToken();
+                    }
+                    break;
+                default:
+                    return null;
+            }
+        } else {
+            xmlCursor = context.getRun().getCTR().newCursor();
+            xmlCursor.toParent();
+            xmlCursor.push();
+            // 如果是表格，检查当前word容器的前一个兄弟元素是否为表格，是则插入一个段落，防止表格粘连在一起
+            if (isTableTag && xmlCursor.toPrevSibling()) {
+                if (xmlCursor.getObject() instanceof CTTbl) {
+                    xmlCursor.toNextSibling();
+                    container.insertNewParagraph(xmlCursor);
+                }
+            }
+            xmlCursor.pop();
+        }
+        return xmlCursor;
+    }
+
+    private void renderElementEnd(Element element, HtmlRenderContext context, ElementRenderer elementRenderer, boolean blocked) {
         if (elementRenderer != null) {
             elementRenderer.renderEnd(element, context);
         }
         context.popInlineStyle();
+        if (blocked) {
+            context.decrementBlockLevel();
+        }
+    }
+
+    private void moveContentToNewPrevParagraph(HtmlRenderContext context) {
+        CTR ctr = context.getRun().getCTR();
+        XmlCursor rCursor = ctr.newCursor();
+        boolean hasPrevSibling = false;
+        while (rCursor.toPrevSibling()) {
+            if (!(rCursor.getObject() instanceof CTPPr)) {
+                hasPrevSibling = true;
+                break;
+            }
+        }
+        if (!hasPrevSibling) {
+            rCursor.dispose();
+            return;
+        }
+        rCursor.toParent();
+        rCursor.push();
+        XWPFParagraph newParagraph = context.getContainer().insertNewParagraph(rCursor);
+        XmlCursor pCursor = newParagraph.getCTP().newCursor();
+        pCursor.toEndToken();
+        rCursor.pop();
+        rCursor.toFirstChild();
+        while (!ctr.equals(rCursor.getObject())) {
+            XmlObject obj = rCursor.getObject();
+            if (obj instanceof CTPPr) {
+                rCursor.copyXml(pCursor);
+                rCursor.toNextSibling();
+            } else if (obj instanceof CTBookmark) {
+                rCursor.toNextSibling();
+            } else {
+                // moveXml附带了toNextSibling的效果
+                rCursor.moveXml(pCursor);
+            }
+        }
+        rCursor.dispose();
+        pCursor.dispose();
     }
 
     @Override
     protected void afterRender(RenderContext<String> context) {
-        clearPlaceholder(context, true);
+        boolean hasSibling = hasSibling(context.getRun());
+        clearPlaceholder(context, !hasSibling);
+
         IBody container = context.getContainer();
         if (container.getPartType() == BodyType.TABLECELL) {
             // 单元格的最后一个元素应为p，否则可能无法正常打开文件
@@ -254,6 +332,34 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
                 ((XWPFTableCell) container).addParagraph();
             }
         }
+    }
+
+    private boolean hasSibling(XWPFRun run) {
+        boolean hasSibling = false;
+        CTR ctr = run.getCTR();
+        XmlCursor xmlCursor = ctr.newCursor();
+        xmlCursor.push();
+        while (xmlCursor.toNextSibling()) {
+            if (isValidSibling(xmlCursor.getObject())) {
+                hasSibling = true;
+                break;
+            }
+        }
+        if (!hasSibling) {
+            xmlCursor.pop();
+            while (xmlCursor.toPrevSibling()) {
+                if (isValidSibling(xmlCursor.getObject())) {
+                    hasSibling = true;
+                    break;
+                }
+            }
+        }
+        xmlCursor.dispose();
+        return hasSibling;
+    }
+
+    private boolean isValidSibling(XmlObject object) {
+        return !(object instanceof CTPPr) && !(object instanceof CTBookmark);
     }
 
     private CSSStyleDeclarationImpl getCssStyleDeclaration(Element element) {
