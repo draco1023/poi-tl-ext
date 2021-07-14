@@ -40,9 +40,12 @@ class HtmlRenderPolicyTest {
         data.put("plainContent", FileReader.readFile("/2.html"));
 
         try (InputStream inputStream = HtmlRenderPolicyTest.class.getResourceAsStream("/notes.docx")) {
-            XWPFTemplate.compile(inputStream, configure).render(data).writeToFile("poi.docx");
+            XWPFTemplate.compile(inputStream, configure).render(data).writeToFile("notes_out.docx");
+        }
+        // 段落内嵌入html测试
+        try (InputStream inputStream = HtmlRenderPolicyTest.class.getResourceAsStream("/poi.docx")) {
+            XWPFTemplate.compile(inputStream, configure).render(data).writeToFile("poi_out.docx");
         }
     }
-
 
 }

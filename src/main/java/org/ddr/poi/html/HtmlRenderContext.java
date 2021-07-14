@@ -27,6 +27,7 @@ import org.apache.poi.xwpf.usermodel.IBody;
 import org.apache.poi.xwpf.usermodel.IBodyElement;
 import org.apache.poi.xwpf.usermodel.XWPFHyperlinkRun;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFRelation;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.xmlbeans.XmlCursor;
@@ -40,6 +41,7 @@ import org.ddr.poi.html.util.RenderUtils;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTColor;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDrawing;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTFonts;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTHyperlink;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageMar;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
@@ -51,6 +53,7 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.STThemeColor;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STUnderline;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STVerticalAlignRun;
 
+import javax.xml.namespace.QName;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
@@ -63,6 +66,9 @@ import java.util.LinkedList;
  * @since 2021-02-08
  */
 public class HtmlRenderContext extends RenderContext<String> {
+    private static final QName R_QNAME = new QName("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "r");
+    private static final QName HYPERLINK_QNAME = new QName("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "hyperlink");
+
     /**
      * 默认字号 小四 12pt 16px
      */
@@ -148,6 +154,11 @@ public class HtmlRenderContext extends RenderContext<String> {
     private BigInteger globalFontSize;
 
     /**
+     * 块状元素深度计数器
+     */
+    private int blockLevel;
+
+    /**
      * 构造方法
      *
      * @param context 原始渲染上下文
@@ -185,6 +196,10 @@ public class HtmlRenderContext extends RenderContext<String> {
     public IBody getContainer() {
         IBody container = ancestors.peek();
         return container == null ? super.getContainer() : container;
+    }
+
+    public boolean containerChanged() {
+        return !ancestors.isEmpty();
     }
 
     /**
@@ -259,6 +274,7 @@ public class HtmlRenderContext extends RenderContext<String> {
                 xmlCursor.toEndToken();
                 xmlCursor.toNextToken();
                 XWPFParagraph paragraph = getContainer().insertNewParagraph(xmlCursor);
+                replaceClosestBody(paragraph);
                 xmlCursor.dispose();
                 return paragraph;
         }
@@ -271,7 +287,20 @@ public class HtmlRenderContext extends RenderContext<String> {
      * @param uri 链接地址
      */
     public void startHyperlink(String uri) {
-        currentRun = getClosestParagraph().createHyperlinkRun(uri);
+        if (isBlocked()) {
+            currentRun = getClosestParagraph().createHyperlinkRun(uri);
+        } else {
+            // 在占位符之前插入超链接
+            String rId = getRun().getParent().getPart().getPackagePart()
+                    .addExternalRelationship(uri, XWPFRelation.HYPERLINK.getRelation()).getId();
+            XmlCursor xmlCursor = getRun().getCTR().newCursor();
+            xmlCursor.insertElement(HYPERLINK_QNAME);
+            xmlCursor.toPrevSibling();
+            CTHyperlink ctHyperlink = (CTHyperlink) xmlCursor.getObject();
+            ctHyperlink.setId(rId);
+            ctHyperlink.addNewR();
+            currentRun = new XWPFHyperlinkRun(ctHyperlink, ctHyperlink.getRArray(0), getRun().getParent());
+        }
     }
 
     /**
@@ -304,7 +333,16 @@ public class HtmlRenderContext extends RenderContext<String> {
             return ctr;
         }
         // 考虑到样式可能不一致，总是创建新的run
-        currentRun = getClosestParagraph().createRun();
+        if (isBlocked()) {
+            currentRun = getClosestParagraph().createRun();
+        } else {
+            // 在占位符之前插入run
+            XmlCursor xmlCursor = getRun().getCTR().newCursor();
+            xmlCursor.insertElement(R_QNAME);
+            xmlCursor.toPrevSibling();
+            CTR ctr = (CTR) xmlCursor.getObject();
+            currentRun = new XWPFRun(ctr, getRun().getParent());
+        }
         return currentRun.getCTR();
     }
 
@@ -401,7 +439,7 @@ public class HtmlRenderContext extends RenderContext<String> {
      * @return 样式值，未声明时返回空字符串
      */
     public String getPropertyValue(String property) {
-        return getPropertyValue(property, false, false);
+        return getPropertyValue(property, false);
     }
 
     /**
@@ -750,4 +788,15 @@ public class HtmlRenderContext extends RenderContext<String> {
         this.globalFontSize = globalFontSize;
     }
 
+    public boolean isBlocked() {
+        return blockLevel > 0;
+    }
+
+    public void incrementBlockLevel() {
+        blockLevel++;
+    }
+
+    public void decrementBlockLevel() {
+        blockLevel--;
+    }
 }

@@ -18,13 +18,17 @@ package org.ddr.poi.html.tag;
 
 import com.steadystate.css.dom.CSSStyleDeclarationImpl;
 import org.apache.commons.lang3.math.NumberUtils;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
+import org.apache.xmlbeans.XmlCursor;
 import org.ddr.poi.html.ElementRenderer;
 import org.ddr.poi.html.HtmlConstants;
 import org.ddr.poi.html.HtmlRenderContext;
 import org.ddr.poi.html.util.RenderUtils;
 import org.jsoup.nodes.Element;
+
+import java.util.List;
 
 /**
  * 表格单元格标签渲染器
@@ -65,6 +69,16 @@ public class TableCellRenderer implements ElementRenderer {
      */
     @Override
     public void renderEnd(Element element, HtmlRenderContext context) {
+        // 单元格创建时默认包含一个空的段落，如果渲染完成时该段落不包含内容则删除
+        List<XWPFParagraph> paragraphs = context.getContainer().getParagraphs();
+        if (paragraphs.size() > 1) {
+            XmlCursor xmlCursor = paragraphs.get(0).getCTP().newCursor();
+            if (!xmlCursor.toFirstChild()) {
+                xmlCursor.removeXml();
+            }
+            xmlCursor.dispose();
+        }
+
         context.popContainer();
         context.popClosestBody();
     }
