@@ -30,11 +30,8 @@ import org.apache.poi.xwpf.usermodel.TableRowAlign;
 import org.apache.poi.xwpf.usermodel.TableWidthType;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
-import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
-import org.apache.xmlbeans.XmlCursor;
-import org.apache.xmlbeans.XmlString;
 import org.ddr.poi.html.HtmlConstants;
 import org.ddr.poi.html.HtmlRenderContext;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBorder;
@@ -63,7 +60,6 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.STUnderline;
 import org.w3c.css.sac.InputSource;
 import org.w3c.dom.css.CSSValue;
 
-import javax.xml.namespace.QName;
 import java.io.IOException;
 import java.io.StringReader;
 import java.math.BigInteger;
@@ -549,20 +545,6 @@ public class RenderUtils {
      */
     public static int emuToTwips(int emu) {
         return (int) (emu * 20L / Units.EMU_PER_POINT);
-    }
-
-    /**
-     * @see XWPFRun#preserveSpaces(XmlString)
-     */
-    public static void preserveSpaces(XmlString xs) {
-        String text = xs.getStringValue();
-        if (text != null && text.length() >= 1
-                && (Character.isWhitespace(text.charAt(0)) || Character.isWhitespace(text.charAt(text.length() - 1)))) {
-            XmlCursor c = xs.newCursor();
-            c.toNextToken();
-            c.insertAttributeWithValue(new QName("http://www.w3.org/XML/1998/namespace", "space"), "preserve");
-            c.dispose();
-        }
     }
 
     /**
