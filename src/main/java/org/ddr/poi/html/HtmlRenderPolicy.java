@@ -160,7 +160,7 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
             Element element = ((Element) node);
             renderElement(element, context);
         } else if (node instanceof TextNode) {
-            context.renderText(((TextNode) node).text());
+            context.renderText(((TextNode) node).getWholeText());
         }
     }
 

@@ -31,6 +31,7 @@ import org.apache.poi.xwpf.usermodel.XWPFRelation;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.xmlbeans.XmlCursor;
+import org.apache.xmlbeans.impl.xb.xmlschema.SpaceAttribute;
 import org.ddr.poi.html.util.CSSLength;
 import org.ddr.poi.html.util.CSSLengthUnit;
 import org.ddr.poi.html.util.Colors;
@@ -38,6 +39,8 @@ import org.ddr.poi.html.util.InlineStyle;
 import org.ddr.poi.html.util.NamedFontSize;
 import org.ddr.poi.html.util.NumberingContext;
 import org.ddr.poi.html.util.RenderUtils;
+import org.ddr.poi.html.util.WhiteSpaceRule;
+import org.jsoup.internal.StringUtil;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTColor;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDrawing;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTFonts;
@@ -563,15 +566,150 @@ public class HtmlRenderContext extends RenderContext<String> {
      * @param text 文本
      */
     public void renderText(String text) {
+        String whiteSpace = getPropertyValue(HtmlConstants.CSS_WHITE_SPACE);
+        WhiteSpaceRule rule = WhiteSpaceRule.of(whiteSpace);
         CTR ctr = newRun();
-        CTText ctText = ctr.addNewT();
-        ctText.setStringValue(text);
-        RenderUtils.preserveSpaces(ctText);
+
+        StringBuilder sb = StringUtil.borrowBuilder();
+        boolean mergeWhitespace = false;
+        boolean reachedNonWhite = false;
+
+        // https://en.wikipedia.org/wiki/List_of_XML_and_HTML_character_entity_references
+        int len = text.length();
+        int c;
+
+        if (!rule.isKeepTrailingSpace()) {
+            boolean reachedLastNonWhite = false;
+            for (int i = len - 1; i >= 0; i -= Character.charCount(c)) {
+                c = text.codePointAt(i);
+                switch (c) {
+                    case ' ':
+                    case '\r':
+                    case '\n':
+                    case '\t':
+                    case 173: // soft hyphen
+                    case 8203: // zero width space
+                    case 8204: // zero width non-joiner
+                    case 8205: // zero width joiner
+                    case 8206: // lrm
+                    case 8207: // rlm
+                    case 8288: // word joiner
+                    case 8289: // apply function
+                    case 8290: // invisible times
+                    case 8291: // invisible separator
+                        len = i;
+                        break;
+                    default:
+                        if (Character.getType(c) == 16) {
+                            len = i;
+                        } else {
+                            reachedLastNonWhite = true;
+                        }
+                        break;
+                }
+                if (reachedLastNonWhite) {
+                    break;
+                }
+            }
+        }
+
+        for (int i = 0; i < len; i += Character.charCount(c)) {
+            c = text.codePointAt(i);
+            switch (c) {
+                case '\r':
+                    if (i + 1 < len && text.codePointAt(i + 1) == '\n') {
+                        continue;
+                    }
+                    if (rule.isKeepLineBreak()) {
+                        addText(ctr, sb);
+                        ctr.addNewCr();
+                    } else {
+                        mergeWhitespace = true;
+                    }
+                    break;
+                case '\n':
+                    if (rule.isKeepLineBreak()) {
+                        addText(ctr, sb);
+                        ctr.addNewBr();
+                    } else {
+                        mergeWhitespace = true;
+                    }
+                    break;
+                case ' ':
+                    if (reachedNonWhite || rule.isKeepSpaceAndTab()) {
+                        sb.appendCodePoint(c);
+                    } else {
+                        mergeWhitespace = true;
+                    }
+                    break;
+                case '\t':
+                    if (reachedNonWhite || rule.isKeepSpaceAndTab()) {
+                        addText(ctr, sb);
+                        ctr.addNewTab();
+                    } else {
+                        mergeWhitespace = true;
+                    }
+                    break;
+                case 160: // nbsp
+                case 8194: // ensp
+                case 8195: // emsp
+                case 8196: // emsp13
+                case 8197: // emsp14
+                case 8199: // numsp
+                case 8200: // puncsp
+                case 8201: // thinsp
+                case 8202: // hairsp
+                case 8287: // medium space
+                    sb.append(' ');
+                    mergeWhitespace = false;
+                    break;
+                case 173: // soft hyphen
+                case 8203: // zero width space
+                case 8204: // zero width non-joiner
+                case 8205: // zero width joiner
+                case 8206: // lrm
+                case 8207: // rlm
+                case 8288: // word joiner
+                case 8289: // apply function
+                case 8290: // invisible times
+                case 8291: // invisible separator
+                    continue;
+                default:
+                    if (Character.getType(c) == 16) {
+                        continue;
+                    }
+                    if (mergeWhitespace) {
+                        if (reachedNonWhite) {
+                            sb.append(' ');
+                        }
+                        mergeWhitespace = false;
+                    }
+                    sb.appendCodePoint(c);
+                    reachedNonWhite = true;
+                    break;
+            }
+        }
+
+        addText(ctr, sb);
+        StringUtil.releaseBuilder(sb);
+
         // 应用样式
         applyTextStyle(ctr);
 
         if (!(currentRun instanceof XWPFHyperlinkRun)) {
             currentRun = null;
+        }
+    }
+
+    private void addText(CTR ctr, StringBuilder sb) {
+        if (sb.length() > 0) {
+            CTText ctText = ctr.addNewT();
+            String text = sb.toString();
+            ctText.setStringValue(text);
+            if (text.charAt(0) == ' ' || text.charAt(sb.length() - 1) == ' ') {
+                ctText.setSpace(SpaceAttribute.Space.PRESERVE);
+            }
+            sb.delete(0, sb.length());
         }
     }
 

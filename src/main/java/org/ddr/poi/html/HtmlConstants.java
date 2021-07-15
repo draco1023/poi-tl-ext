@@ -149,6 +149,7 @@ public interface HtmlConstants {
     String CSS_BORDER_BOTTOM_COLOR = "border-bottom-color";
     String CSS_BORDER_LEFT_COLOR = "border-left-color";
     String CSS_FLOAT = "float";
+    String CSS_WHITE_SPACE = "white-space";
 
     String NORMAL = "normal";
     String ITALIC = "italic";
@@ -233,6 +234,12 @@ public interface HtmlConstants {
 
     String SUPER = "super";
     String SUB = "sub";
+
+    String NO_WRAP = "nowrap";
+    String PRE = "pre";
+    String PRE_WRAP = "pre-wrap";
+    String PRE_LINE = "pre-line";
+    String BREAK_SPACES = "break-spaces";
 
     Set<String> FONT_STYLES = Sets.newHashSet(NORMAL, ITALIC, OBLIQUE);
     Set<String> FONT_VARIANTS = Sets.newHashSet(NORMAL, SMALL_CAPS);
