@@ -353,34 +353,6 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
         return !(object instanceof CTPPr) && !(object instanceof CTBookmark);
     }
 
-    private boolean hasSibling(XWPFRun run) {
-        boolean hasSibling = false;
-        CTR ctr = run.getCTR();
-        XmlCursor xmlCursor = ctr.newCursor();
-        xmlCursor.push();
-        while (xmlCursor.toNextSibling()) {
-            if (isValidSibling(xmlCursor.getObject())) {
-                hasSibling = true;
-                break;
-            }
-        }
-        if (!hasSibling) {
-            xmlCursor.pop();
-            while (xmlCursor.toPrevSibling()) {
-                if (isValidSibling(xmlCursor.getObject())) {
-                    hasSibling = true;
-                    break;
-                }
-            }
-        }
-        xmlCursor.dispose();
-        return hasSibling;
-    }
-
-    private boolean isValidSibling(XmlObject object) {
-        return !(object instanceof CTPPr) && !(object instanceof CTBookmark);
-    }
-
     private CSSStyleDeclarationImpl getCssStyleDeclaration(Element element) {
         String style = element.attr(HtmlConstants.ATTR_STYLE);
         CSSStyleDeclarationImpl cssStyleDeclaration = CSSStyleUtils.parse(style);
