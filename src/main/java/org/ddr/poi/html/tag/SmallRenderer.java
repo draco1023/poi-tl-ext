@@ -19,7 +19,7 @@ package org.ddr.poi.html.tag;
 import org.ddr.poi.html.ElementRenderer;
 import org.ddr.poi.html.HtmlConstants;
 import org.ddr.poi.html.HtmlRenderContext;
-import org.ddr.poi.html.util.RenderUtils;
+import org.ddr.poi.html.util.CSSStyleUtils;
 import org.jsoup.nodes.Element;
 
 /**
@@ -40,7 +40,7 @@ public class SmallRenderer implements ElementRenderer {
      */
     @Override
     public boolean renderStart(Element element, HtmlRenderContext context) {
-        context.pushInlineStyle(RenderUtils.parse(HtmlConstants.DEFINED_SMALLER), element.isBlock());
+        context.pushInlineStyle(CSSStyleUtils.parse(HtmlConstants.DEFINED_SMALLER), element.isBlock());
         return true;
     }
 

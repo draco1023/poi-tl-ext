@@ -19,7 +19,7 @@ package org.ddr.poi.html.tag;
 import org.ddr.poi.html.ElementRenderer;
 import org.ddr.poi.html.HtmlConstants;
 import org.ddr.poi.html.HtmlRenderContext;
-import org.ddr.poi.html.util.RenderUtils;
+import org.ddr.poi.html.util.CSSStyleUtils;
 import org.jsoup.nodes.Element;
 
 /**
@@ -50,7 +50,7 @@ public class HeaderRenderer implements ElementRenderer {
     public boolean renderStart(Element element, HtmlRenderContext context) {
         int index = Integer.parseInt(element.normalName().substring(1)) - 1;
         String fontSizeStyle = HtmlConstants.inlineStyle(HtmlConstants.CSS_FONT_SIZE, FONT_SIZES[index]);
-        context.pushInlineStyle(RenderUtils.parse(HtmlConstants.DEFINED_BOLD + fontSizeStyle), element.isBlock());
+        context.pushInlineStyle(CSSStyleUtils.parse(HtmlConstants.DEFINED_BOLD + fontSizeStyle), element.isBlock());
         return true;
     }
 

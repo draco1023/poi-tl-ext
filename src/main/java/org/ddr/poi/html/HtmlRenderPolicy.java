@@ -19,10 +19,7 @@ package org.ddr.poi.html;
 import com.deepoove.poi.policy.AbstractRenderPolicy;
 import com.deepoove.poi.render.RenderContext;
 import com.steadystate.css.dom.CSSStyleDeclarationImpl;
-import com.steadystate.css.dom.CSSValueImpl;
-import com.steadystate.css.dom.Property;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.poi.xwpf.usermodel.BodyElementType;
 import org.apache.poi.xwpf.usermodel.BodyType;
 import org.apache.poi.xwpf.usermodel.IBody;
@@ -53,10 +50,8 @@ import org.ddr.poi.html.tag.TableCellRenderer;
 import org.ddr.poi.html.tag.TableRenderer;
 import org.ddr.poi.html.tag.UnderlineRenderer;
 import org.ddr.poi.html.tag.WalkThroughRenderer;
-import org.ddr.poi.html.util.BoxProperty;
 import org.ddr.poi.html.util.CSSLength;
-import org.ddr.poi.html.util.Colors;
-import org.ddr.poi.html.util.NamedBorderWidth;
+import org.ddr.poi.html.util.CSSStyleUtils;
 import org.ddr.poi.html.util.RenderUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -69,11 +64,7 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTbl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.w3c.css.sac.InputSource;
-import org.w3c.dom.css.CSSValue;
 
-import java.io.IOException;
-import java.io.StringReader;
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.List;
@@ -364,229 +355,9 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
 
     private CSSStyleDeclarationImpl getCssStyleDeclaration(Element element) {
         String style = element.attr(HtmlConstants.ATTR_STYLE);
-        try (StringReader sr = new StringReader(style)) {
-            CSSStyleDeclarationImpl cssStyleDeclaration = (CSSStyleDeclarationImpl) RenderUtils.CSS_PARSER.parseStyleDeclaration(new InputSource(sr));
-            for (int i = cssStyleDeclaration.getProperties().size() - 1; i >= 0; i--) {
-                final Property p = cssStyleDeclaration.getProperties().get(i);
-                if (p != null && p.getValue() != null) {
-                    String name = p.getName().toLowerCase();
-                    CSSValueImpl valueList = (CSSValueImpl) p.getValue();
-                    int length = valueList.getLength();
-                    // 将复合样式拆分成单属性样式
-                    switch (name) {
-                        case HtmlConstants.CSS_BACKGROUND:
-                            splitBackground(valueList, length, cssStyleDeclaration, i);
-                            break;
-                        case HtmlConstants.CSS_BORDER:
-                            splitBorder(valueList, length, cssStyleDeclaration, i);
-                            break;
-                        case HtmlConstants.CSS_BORDER_TOP:
-                            splitBorder(valueList, length, cssStyleDeclaration, i, HtmlConstants.CSS_BORDER_TOP_STYLE,
-                                    HtmlConstants.CSS_BORDER_TOP_WIDTH, HtmlConstants.CSS_BORDER_TOP_COLOR);
-                            break;
-                        case HtmlConstants.CSS_BORDER_RIGHT:
-                            splitBorder(valueList, length, cssStyleDeclaration, i, HtmlConstants.CSS_BORDER_RIGHT_STYLE,
-                                    HtmlConstants.CSS_BORDER_RIGHT_WIDTH, HtmlConstants.CSS_BORDER_RIGHT_COLOR);
-                            break;
-                        case HtmlConstants.CSS_BORDER_BOTTOM:
-                            splitBorder(valueList, length, cssStyleDeclaration, i, HtmlConstants.CSS_BORDER_BOTTOM_STYLE,
-                                    HtmlConstants.CSS_BORDER_BOTTOM_WIDTH, HtmlConstants.CSS_BORDER_BOTTOM_COLOR);
-                            break;
-                        case HtmlConstants.CSS_BORDER_LEFT:
-                            splitBorder(valueList, length, cssStyleDeclaration, i, HtmlConstants.CSS_BORDER_LEFT_STYLE,
-                                    HtmlConstants.CSS_BORDER_LEFT_WIDTH, HtmlConstants.CSS_BORDER_LEFT_COLOR);
-                            break;
-                        case HtmlConstants.CSS_BORDER_STYLE:
-                            splitBox(valueList, length, cssStyleDeclaration, i, BoxProperty.BORDER_STYLE);
-                            break;
-                        case HtmlConstants.CSS_BORDER_WIDTH:
-                            splitBox(valueList, length, cssStyleDeclaration, i, BoxProperty.BORDER_WIDTH);
-                            break;
-                        case HtmlConstants.CSS_BORDER_COLOR:
-                            splitBox(valueList, length, cssStyleDeclaration, i, BoxProperty.BORDER_COLOR);
-                            break;
-                        case HtmlConstants.CSS_FONT:
-                            splitFont(valueList, length, cssStyleDeclaration, i);
-                            break;
-                        case HtmlConstants.CSS_MARGIN:
-                            splitBox(valueList, length, cssStyleDeclaration, i, BoxProperty.MARGIN);
-                            break;
-                        case HtmlConstants.CSS_PADDING:
-                            splitBox(valueList, length, cssStyleDeclaration, i, BoxProperty.PADDING);
-                            break;
-                    }
-                }
-            }
-            return cssStyleDeclaration;
-        } catch (IOException e) {
-            log.warn("Inline style parse error: {}", style, e);
-            return RenderUtils.EMPTY_STYLE;
-        }
-    }
-
-    private void splitBackground(CSSValueImpl valueList, int length, CSSStyleDeclarationImpl cssStyleDeclaration, int i) {
-        if (length == 0) {
-            String cssText = valueList.getCssText().toLowerCase();
-            String color = Colors.fromStyle(cssText, null);
-            if (color != null) {
-                cssStyleDeclaration.getProperties().add(i, new Property(HtmlConstants.CSS_BACKGROUND_COLOR, valueList, false));
-            }
-        } else {
-            for (int j = 0; j < length; j++) {
-                CSSValue item = valueList.item(j);
-                String cssText = item.getCssText().toLowerCase();
-                String color = Colors.fromStyle(cssText, null);
-                if (color != null) {
-                    cssStyleDeclaration.getProperties().add(i, new Property(HtmlConstants.CSS_BACKGROUND_COLOR, item, false));
-                    break;
-                }
-            }
-        }
-    }
-
-    private void splitBorder(CSSValueImpl valueList, int length, CSSStyleDeclarationImpl cssStyleDeclaration, int i) {
-        if (length == 0) {
-            String cssText = valueList.getCssText();
-            if (StringUtils.isNotBlank(cssText)) {
-                handleBorderValue(cssStyleDeclaration, i, valueList, cssText);
-            }
-        } else {
-            for (int j = 0; j < length; j++) {
-                CSSValue item = valueList.item(j);
-                String value = item.getCssText();
-                handleBorderValue(cssStyleDeclaration, i, item, value);
-            }
-        }
-    }
-
-    private void splitBorder(CSSValueImpl valueList, int length, CSSStyleDeclarationImpl cssStyleDeclaration, int i,
-                             String styleProperty, String widthProperty, String colorProperty) {
-        if (length == 0) {
-            String cssText = valueList.getCssText();
-            if (StringUtils.isNotBlank(cssText)) {
-                handleBorderValue(cssStyleDeclaration, i, valueList, cssText, styleProperty, widthProperty, colorProperty);
-            }
-        } else {
-            for (int j = 0; j < length; j++) {
-                CSSValue item = valueList.item(j);
-                String value = item.getCssText();
-                handleBorderValue(cssStyleDeclaration, i, item, value, styleProperty, widthProperty, colorProperty);
-            }
-        }
-    }
-
-    private void handleBorderValue(CSSStyleDeclarationImpl cssStyleDeclaration, int i, CSSValue item, String value) {
-        value = value.toLowerCase();
-        if (HtmlConstants.BORDER_STYLES.contains(value)) {
-            BoxProperty.BORDER_STYLE.setValues(cssStyleDeclaration, i, item);
-        } else if (NamedBorderWidth.contains(value)) {
-            BoxProperty.BORDER_WIDTH.setValues(cssStyleDeclaration, i, item);
-        } else if (Character.isDigit(value.charAt(0))) {
-            CSSLength width = CSSLength.of(value);
-            if (width.isValid()) {
-                BoxProperty.BORDER_WIDTH.setValues(cssStyleDeclaration, i, item);
-            }
-        } else {
-            BoxProperty.BORDER_COLOR.setValues(cssStyleDeclaration, i, item);
-        }
-    }
-
-    private void handleBorderValue(CSSStyleDeclarationImpl cssStyleDeclaration, int i, CSSValue item, String value,
-                                   String styleProperty, String widthProperty, String colorProperty) {
-        value = value.toLowerCase();
-        if (HtmlConstants.BORDER_STYLES.contains(value)) {
-            cssStyleDeclaration.getProperties().add(i, new Property(styleProperty, item, false));
-        } else if (NamedBorderWidth.contains(value)) {
-            cssStyleDeclaration.getProperties().add(i, new Property(widthProperty, item, false));
-        } else if (Character.isDigit(value.charAt(0))) {
-            CSSLength width = CSSLength.of(value);
-            if (width.isValid()) {
-                cssStyleDeclaration.getProperties().add(i, new Property(widthProperty, item, false));
-            }
-        } else {
-            cssStyleDeclaration.getProperties().add(i, new Property(colorProperty, item, false));
-        }
-    }
-
-    private void splitFont(CSSValueImpl valueList, int length, CSSStyleDeclarationImpl cssStyleDeclaration, int i) {
-        if (length == 0) {
-            return;
-        }
-
-        boolean styleHandled = false;
-        boolean sizeHandled = false;
-        for (int j = 0; j < length; j++) {
-            CSSValue item = valueList.item(j);
-            String value = item.getCssText();
-            String lowerCase = value.toLowerCase();
-            if (!styleHandled && HtmlConstants.FONT_STYLES.contains(lowerCase)) {
-                cssStyleDeclaration.getProperties().add(i, new Property(HtmlConstants.CSS_FONT_STYLE, item, false));
-                styleHandled = true;
-            } else if (HtmlConstants.FONT_VARIANTS.contains(lowerCase)) {
-                cssStyleDeclaration.getProperties().add(i, new Property(HtmlConstants.CSS_FONT_VARIANT_CAPS, item, false));
-            } else if (HtmlConstants.FONT_WEIGHTS.contains(lowerCase) || NumberUtils.isParsable(value)) {
-                cssStyleDeclaration.getProperties().add(i, new Property(HtmlConstants.CSS_FONT_WEIGHT, item, false));
-            } else if (HtmlConstants.SLASH.equals(value)) {
-                // 字号与行高分隔符
-                // https://www.w3.org/TR/CSS22/fonts.html#value-def-absolute-size
-                // xx-small, x-small, small, medium, large, x-large, xx-large, xxx-large
-                // 1,        ,        2,     3,      4,     5,       6,        7
-                // FIXME font元素由于已废弃暂不支持
-                // 长度/百分比
-                CSSValue fontSize = valueList.item(j - 1);
-                cssStyleDeclaration.getProperties().add(i, new Property(HtmlConstants.CSS_FONT_SIZE, fontSize, false));
-                sizeHandled = true;
-                if (++j < length) {
-                    // 数字/长度/百分比
-                    CSSValue lineHeight = valueList.item(j);
-                    cssStyleDeclaration.getProperties().add(i, new Property(HtmlConstants.CSS_LINE_HEIGHT, lineHeight, false));
-                }
-            } else if (HtmlConstants.COMMA.equals(value)) {
-                // 多个字体之间的分隔符
-                CSSValue firstFont = valueList.item(j - 1);
-                if (!sizeHandled) {
-                    CSSValue fontSize = valueList.item(j - 2);
-                    cssStyleDeclaration.getProperties().add(i, new Property(HtmlConstants.CSS_FONT_SIZE, fontSize, false));
-                }
-                if (HtmlConstants.isMajorFont(firstFont.getCssText())) {
-                    cssStyleDeclaration.getProperties().add(i, new Property(HtmlConstants.CSS_FONT_FAMILY, firstFont, false));
-                } else {
-                    for (j++; j < length; j++) {
-                        CSSValue fontFamily = valueList.item(j);
-                        if (HtmlConstants.isMajorFont(fontFamily.getCssText())) {
-                            cssStyleDeclaration.getProperties().add(i, new Property(HtmlConstants.CSS_FONT_FAMILY, fontFamily, false));
-                            break;
-                        }
-                    }
-                }
-                break;
-            } else if (j == length - 1) {
-                // font-family在font中一定是最后出现
-                cssStyleDeclaration.getProperties().add(i, new Property(HtmlConstants.CSS_FONT_FAMILY, item, false));
-            }
-        }
-    }
-
-    private void splitBox(CSSValueImpl valueList, int length, CSSStyleDeclarationImpl cssStyleDeclaration, int i,
-                          BoxProperty boxProperty) {
-        switch (length) {
-            // 当仅一个值时实际返回长度为0
-            case 0:
-            case 1:
-                if (StringUtils.isNotBlank(valueList.getCssText())) {
-                    boxProperty.setValues(cssStyleDeclaration, i, valueList);
-                }
-                break;
-            case 2:
-                boxProperty.setValues(cssStyleDeclaration, i, valueList.item(0), valueList.item(1));
-                break;
-            case 3:
-                boxProperty.setValues(cssStyleDeclaration, i, valueList.item(0), valueList.item(1), valueList.item(2));
-                break;
-            case 4:
-                boxProperty.setValues(cssStyleDeclaration, i, valueList.item(0), valueList.item(1), valueList.item(2), valueList.item(3));
-                break;
-        }
+        CSSStyleDeclarationImpl cssStyleDeclaration = CSSStyleUtils.parse(style);
+        CSSStyleUtils.split(cssStyleDeclaration);
+        return cssStyleDeclaration;
     }
 
 }
