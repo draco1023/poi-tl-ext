@@ -34,6 +34,7 @@ import org.apache.xmlbeans.XmlCursor;
 import org.apache.xmlbeans.impl.xb.xmlschema.SpaceAttribute;
 import org.ddr.poi.html.util.CSSLength;
 import org.ddr.poi.html.util.CSSLengthUnit;
+import org.ddr.poi.html.util.CSSStyleUtils;
 import org.ddr.poi.html.util.Colors;
 import org.ddr.poi.html.util.InlineStyle;
 import org.ddr.poi.html.util.NamedFontSize;
@@ -432,7 +433,7 @@ public class HtmlRenderContext extends RenderContext<String> {
      */
     public CSSStyleDeclarationImpl currentElementStyle() {
         InlineStyle inlineStyle = inlineStyles.peek();
-        return inlineStyle == null ? RenderUtils.EMPTY_STYLE : inlineStyle.getDeclaration();
+        return inlineStyle == null ? CSSStyleUtils.EMPTY_STYLE : inlineStyle.getDeclaration();
     }
 
     /**

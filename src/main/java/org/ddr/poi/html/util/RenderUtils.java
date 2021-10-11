@@ -18,9 +18,6 @@ package org.ddr.poi.html.util;
 
 import com.steadystate.css.dom.CSSStyleDeclarationImpl;
 import com.steadystate.css.dom.CSSValueImpl;
-import com.steadystate.css.dom.Property;
-import com.steadystate.css.parser.CSSOMParser;
-import com.steadystate.css.parser.SACParserCSS3;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.util.Units;
 import org.apache.poi.xwpf.usermodel.BodyType;
@@ -57,11 +54,8 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTUnderline;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STBorder;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STTblWidth;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STUnderline;
-import org.w3c.css.sac.InputSource;
 import org.w3c.dom.css.CSSValue;
 
-import java.io.IOException;
-import java.io.StringReader;
 import java.math.BigInteger;
 import java.util.function.Function;
 
@@ -72,14 +66,6 @@ import java.util.function.Function;
  * @since 2021-02-08
  */
 public class RenderUtils {
-    /**
-     * CSS解析器
-     */
-    public static final CSSOMParser CSS_PARSER = new CSSOMParser(new SACParserCSS3());
-    /**
-     * 空样式
-     */
-    public static final CSSStyleDeclarationImpl EMPTY_STYLE = new CSSStyleDeclarationImpl();
     /**
      * Word中字号下拉列表对应的值
      */
@@ -101,45 +87,6 @@ public class RenderUtils {
      * 表格单元格边距
      */
     public static final int TABLE_CELL_MARGIN = 108;
-
-    /**
-     * 解析行内样式
-     *
-     * @param inlineStyle 行内样式声明
-     * @return 样式
-     */
-    public static CSSStyleDeclarationImpl parse(String inlineStyle) {
-        try (StringReader sr = new StringReader(inlineStyle)) {
-            return (CSSStyleDeclarationImpl) CSS_PARSER.parseStyleDeclaration(new InputSource(sr));
-        } catch (IOException ignored) {
-            return RenderUtils.EMPTY_STYLE;
-        }
-    }
-
-    /**
-     * 解析样式值
-     *
-     * @param value 样式值字符串
-     * @return 样式值
-     */
-    public static CSSValue parseValue(String value) {
-        try (StringReader sr = new StringReader(value)) {
-            return CSS_PARSER.parsePropertyValue(new InputSource(sr));
-        } catch (IOException ignored) {
-            return new CSSValueImpl();
-        }
-    }
-
-    /**
-     * 将样式键值对转换为样式属性
-     *
-     * @param key 样式名称
-     * @param value 样式值
-     * @return 样式属性
-     */
-    public static Property newProperty(String key, String value) {
-        return new Property(key, parseValue(value), false);
-    }
 
     /**
      * 文本对齐值映射
@@ -280,7 +227,7 @@ public class RenderUtils {
      * @param cssStyleDeclaration CSS样式声明
      */
     public static void paragraphStyle(HtmlRenderContext context, XWPFParagraph paragraph, CSSStyleDeclarationImpl cssStyleDeclaration) {
-        if (EMPTY_STYLE.equals(cssStyleDeclaration)) {
+        if (CSSStyleUtils.isEmpty(cssStyleDeclaration)) {
             return;
         }
 
@@ -555,7 +502,7 @@ public class RenderUtils {
      * @param cssStyleDeclaration CSS样式声明
      */
     public static void tableStyle(HtmlRenderContext context, XWPFTable table, CSSStyleDeclarationImpl cssStyleDeclaration) {
-        if (EMPTY_STYLE.equals(cssStyleDeclaration)) {
+        if (CSSStyleUtils.isEmpty(cssStyleDeclaration)) {
             return;
         }
 
@@ -604,7 +551,7 @@ public class RenderUtils {
      * @param cssStyleDeclaration CSS样式声明
      */
     public static void cellStyle(HtmlRenderContext context, XWPFTableCell cell, CSSStyleDeclarationImpl cssStyleDeclaration) {
-        if (EMPTY_STYLE.equals(cssStyleDeclaration)) {
+        if (CSSStyleUtils.isEmpty(cssStyleDeclaration)) {
             return;
         }
 

@@ -27,6 +27,7 @@ import org.ddr.poi.html.HtmlConstants;
 import org.ddr.poi.html.HtmlRenderContext;
 import org.ddr.poi.html.util.CSSLength;
 import org.ddr.poi.html.util.CSSLengthUnit;
+import org.ddr.poi.html.util.CSSStyleUtils;
 import org.ddr.poi.html.util.JsoupUtils;
 import org.ddr.poi.html.util.RenderUtils;
 import org.ddr.poi.html.util.Span;
@@ -97,9 +98,10 @@ public class TableRenderer implements ElementRenderer {
             Elements tds = JsoupUtils.children(tr, HtmlConstants.TAG_TH, HtmlConstants.TAG_TD);
             int columnSum = 0;
             int minRowSpan = 1;
+            int vMergeCount = 0;
             for (int c = 0; c < tds.size(); c++) {
                 Element td = tds.get(c);
-                CSSStyleDeclarationImpl tdStyleDeclaration = RenderUtils.parse(td.attr(HtmlConstants.ATTR_STYLE));
+                CSSStyleDeclarationImpl tdStyleDeclaration = CSSStyleUtils.parse(td.attr(HtmlConstants.ATTR_STYLE));
                 CSSLength tdWidth = CSSLength.of(tdStyleDeclaration.getWidth());
                 int rowspan = NumberUtils.toInt(td.attr(HtmlConstants.ATTR_ROWSPAN), 1);
                 int colspan = NumberUtils.toInt(td.attr(HtmlConstants.ATTR_COLSPAN), 1);
@@ -112,6 +114,8 @@ public class TableRenderer implements ElementRenderer {
                         XWPFTableCell cell = createCell(row, c);
                         CTTcPr ctTcPr = RenderUtils.getTcPr(cell.getCTTc());
                         ctTcPr.addNewVMerge();
+                        vMergeCount++;
+                        RenderUtils.setBorder(cell, entry.getValue().getStyle());
                         if (entry.getValue().getColumn() > 1) {
                             ctTcPr.addNewGridSpan().setVal(BigInteger.valueOf(entry.getValue().getColumn()));
                         }
@@ -119,13 +123,14 @@ public class TableRenderer implements ElementRenderer {
                 }
                 // 标记行列索引，便于渲染单元格时获取容器
                 td.attr(HtmlConstants.ATTR_ROW_INDEX, String.valueOf(r));
-                td.attr(HtmlConstants.ATTR_COLUMN_INDEX, String.valueOf(c));
+                td.attr(HtmlConstants.ATTR_COLUMN_INDEX, String.valueOf(c + vMergeCount));
 
                 // 必须晚于之前列的行合并单元格创建
                 XWPFTableCell cell = createCell(row, c);
                 CTTcPr ctTcPr = RenderUtils.getTcPr(cell.getCTTc());
                 if (rowspan > 1) {
-                    rowSpanMap.put(columnSum, new Span(rowspan, colspan, false));
+                    CSSStyleUtils.split(tdStyleDeclaration);
+                    rowSpanMap.put(columnSum, new Span(rowspan, colspan, false, tdStyleDeclaration));
                     CTVMerge ctvMerge = ctTcPr.isSetVMerge() ? ctTcPr.getVMerge() : ctTcPr.addNewVMerge();
                     ctvMerge.setVal(STMerge.RESTART);
                 }

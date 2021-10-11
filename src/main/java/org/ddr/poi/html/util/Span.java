@@ -16,6 +16,8 @@
 
 package org.ddr.poi.html.util;
 
+import com.steadystate.css.dom.CSSStyleDeclarationImpl;
+
 /**
  * 记录表格单元格跨行列的帮助类
  *
@@ -26,11 +28,13 @@ public class Span {
     private int row;
     private int column;
     private boolean enabled;
+    private CSSStyleDeclarationImpl style;
 
-    public Span(int row, int column, boolean enabled) {
+    public Span(int row, int column, boolean enabled, CSSStyleDeclarationImpl style) {
         this.row = row;
         this.column = column;
         this.enabled = enabled;
+        this.style = style;
     }
 
     public int getRow() {
@@ -55,6 +59,10 @@ public class Span {
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
+    }
+
+    public CSSStyleDeclarationImpl getStyle() {
+        return style;
     }
 
     public String toString() {
