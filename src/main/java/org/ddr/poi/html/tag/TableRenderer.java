@@ -31,6 +31,7 @@ import org.ddr.poi.html.util.CSSStyleUtils;
 import org.ddr.poi.html.util.JsoupUtils;
 import org.ddr.poi.html.util.RenderUtils;
 import org.ddr.poi.html.util.Span;
+import org.ddr.poi.html.util.SpanWidth;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTRow;
@@ -47,6 +48,7 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.STTblWidth;
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -91,12 +93,13 @@ public class TableRenderer implements ElementRenderer {
         Elements trs = JsoupUtils.childRows(element);
         Map<Integer, Span> rowSpanMap = new HashMap<>(4);
         TreeMap<Integer, CSSLength> colWidthMap = new TreeMap<>();
+        LinkedHashSet<SpanWidth> spanWidths = new LinkedHashSet<>();
         for (int r = 0; r < trs.size(); r++) {
             Element tr = trs.get(r);
             XWPFTableRow row = createRow(table, r);
 
             Elements tds = JsoupUtils.children(tr, HtmlConstants.TAG_TH, HtmlConstants.TAG_TD);
-            int columnSum = 0;
+            int columnIndex = 0;
             int minRowSpan = 1;
             int vMergeCount = 0;
             for (int c = 0; c < tds.size(); c++) {
@@ -107,8 +110,8 @@ public class TableRenderer implements ElementRenderer {
                 int colspan = NumberUtils.toInt(td.attr(HtmlConstants.ATTR_COLSPAN), 1);
                 minRowSpan = Math.min(minRowSpan, rowspan);
                 for (Map.Entry<Integer, Span> entry : rowSpanMap.entrySet()) {
-                    if (entry.getKey() <= columnSum && entry.getValue().isEnabled()) {
-                        columnSum += entry.getValue().getColumn();
+                    if (entry.getKey() <= columnIndex && entry.getValue().isEnabled()) {
+                        columnIndex += entry.getValue().getColumn();
                         entry.getValue().setEnabled(false);
                         // 合并行也需要生成单元格
                         XWPFTableCell cell = createCell(row, c);
@@ -130,31 +133,32 @@ public class TableRenderer implements ElementRenderer {
                 CTTcPr ctTcPr = RenderUtils.getTcPr(cell.getCTTc());
                 if (rowspan > 1) {
                     CSSStyleUtils.split(tdStyleDeclaration);
-                    rowSpanMap.put(columnSum, new Span(rowspan, colspan, false, tdStyleDeclaration));
+                    rowSpanMap.put(columnIndex, new Span(rowspan, colspan, false, tdStyleDeclaration));
                     CTVMerge ctvMerge = ctTcPr.isSetVMerge() ? ctTcPr.getVMerge() : ctTcPr.addNewVMerge();
                     ctvMerge.setVal(STMerge.RESTART);
                 }
                 if (colspan == 1) {
-                    CSSLength existingWidth = colWidthMap.get(columnSum);
+                    CSSLength existingWidth = colWidthMap.get(columnIndex);
                     if (existingWidth == null || !existingWidth.isValid()) {
-                        colWidthMap.put(columnSum, tdWidth);
+                        colWidthMap.put(columnIndex, tdWidth);
                     } else {
                         // 根据表格本身是否使用百分比的宽度定义，来确定单元格宽度的定义方式
                         if (explicitWidth) {
                             if (existingWidth.isPercent()) {
-                                colWidthMap.put(columnSum, tdWidth);
+                                colWidthMap.put(columnIndex, tdWidth);
                             }
                         } else {
                             if (!existingWidth.isPercent()) {
-                                colWidthMap.put(columnSum, tdWidth);
+                                colWidthMap.put(columnIndex, tdWidth);
                             }
                         }
                     }
                 } else {
+                    spanWidths.add(new SpanWidth(tdWidth, columnIndex, colspan, explicitWidth));
                     ctTcPr.addNewGridSpan().setVal(BigInteger.valueOf(colspan));
                 }
 
-                columnSum += colspan;
+                columnIndex += colspan;
             }
 
             for (Iterator<Map.Entry<Integer, Span>> iterator = rowSpanMap.entrySet().iterator(); iterator.hasNext(); ) {
@@ -173,6 +177,10 @@ public class TableRenderer implements ElementRenderer {
         if (tblGrid == null) {
             tblGrid = ctTbl.addNewTblGrid();
         }
+        for (SpanWidth spanWidth : spanWidths) {
+            spanWidth.setLength(colWidthMap);
+        }
+
         BigInteger[] colWidths = new BigInteger[colWidthMap.size()];
         // 未处理的百分比总和
         double unhandledPercentSum = 0;
@@ -225,6 +233,7 @@ public class TableRenderer implements ElementRenderer {
         }
         for (int i = 0, rows = ctTbl.sizeOfTrArray(); i < rows; i++) {
             CTRow ctRow = ctTbl.getTrArray(i);
+            int columnIndex = 0;
             for (int j = 0, cells = ctRow.sizeOfTcArray(); j < cells; j++) {
                 CTTc ctTc = ctRow.getTcArray(j);
                 CTTcPr tcPr = RenderUtils.getTcPr(ctTc);
@@ -232,14 +241,15 @@ public class TableRenderer implements ElementRenderer {
                 CTTblWidth tcWidth = tcPr.addNewTcW();
                 tcWidth.setType(STTblWidth.DXA);
                 if (colspan == 1) {
-                    tcWidth.setW(colWidths[j]);
+                    tcWidth.setW(colWidths[columnIndex]);
                 } else {
                     int sum = 0;
                     for (int k = 0; k < colspan; k++) {
-                        sum += colWidths[j + k].intValue();
+                        sum += colWidths[columnIndex + k].intValue();
                     }
                     tcWidth.setW(BigInteger.valueOf(sum));
                 }
+                columnIndex += colspan;
             }
         }
 
