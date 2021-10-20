@@ -18,6 +18,7 @@ package org.ddr.poi.html.tag;
 
 import com.steadystate.css.dom.CSSStyleDeclarationImpl;
 import org.apache.commons.lang3.math.NumberUtils;
+import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
@@ -77,6 +78,15 @@ public class TableCellRenderer implements ElementRenderer {
                 xmlCursor.removeXml();
             }
             xmlCursor.dispose();
+        }
+
+        ParagraphAlignment alignment = RenderUtils.align(context.currentElementStyle().getTextAlign());
+        if (alignment != null) {
+            for (XWPFParagraph paragraph : context.getContainer().getParagraphs()) {
+                if (paragraph.getAlignment() != alignment) {
+                    paragraph.setAlignment(alignment);
+                }
+            }
         }
 
         context.popContainer();
