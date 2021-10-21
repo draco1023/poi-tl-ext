@@ -28,6 +28,7 @@ import org.ddr.poi.html.HtmlConstants;
 import org.ddr.poi.html.HtmlRenderContext;
 import org.ddr.poi.html.util.RenderUtils;
 import org.jsoup.nodes.Element;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPPr;
 
 import java.util.List;
 
@@ -83,7 +84,8 @@ public class TableCellRenderer implements ElementRenderer {
         ParagraphAlignment alignment = RenderUtils.align(context.currentElementStyle().getTextAlign());
         if (alignment != null) {
             for (XWPFParagraph paragraph : context.getContainer().getParagraphs()) {
-                if (paragraph.getAlignment() != alignment) {
+                CTPPr pPr = paragraph.getCTP().getPPr();
+                if (pPr == null || !pPr.isSetJc()) {
                     paragraph.setAlignment(alignment);
                 }
             }
