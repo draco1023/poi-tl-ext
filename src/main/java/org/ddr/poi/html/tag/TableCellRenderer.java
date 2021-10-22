@@ -77,13 +77,14 @@ public class TableCellRenderer implements ElementRenderer {
             XmlCursor xmlCursor = paragraphs.get(0).getCTP().newCursor();
             if (!xmlCursor.toFirstChild()) {
                 xmlCursor.removeXml();
+                paragraphs.remove(0);
             }
             xmlCursor.dispose();
         }
 
         ParagraphAlignment alignment = RenderUtils.align(context.currentElementStyle().getTextAlign());
         if (alignment != null) {
-            for (XWPFParagraph paragraph : context.getContainer().getParagraphs()) {
+            for (XWPFParagraph paragraph : paragraphs) {
                 CTPPr pPr = paragraph.getCTP().getPPr();
                 if (pPr == null || !pPr.isSetJc()) {
                     paragraph.setAlignment(alignment);
