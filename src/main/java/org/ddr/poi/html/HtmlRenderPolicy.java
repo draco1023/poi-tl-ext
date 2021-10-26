@@ -62,6 +62,9 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBookmark;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTbl;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblBorders;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblPr;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STBorder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,14 +86,20 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
     private final Map<String, ElementRenderer> elRenderers;
     private static final Pattern FORMATTED_PATTERN = Pattern.compile(">\\s+<");
     private static final String FORMATTED_REPLACEMENT = "><";
-    private final String globalFont;
-    private final int globalFontSizeInHalfPoints;
+    private final HtmlRenderConfig config;
 
     public HtmlRenderPolicy() {
-        this(null, null);
+        this(new HtmlRenderConfig());
     }
 
+    @Deprecated
     public HtmlRenderPolicy(String globalFont, CSSLength globalFontSize) {
+        this(new HtmlRenderConfig());
+        config.setGlobalFont(globalFont);
+        config.setGlobalFontSize(globalFontSize);
+    }
+
+    public HtmlRenderPolicy(HtmlRenderConfig config) {
         ElementRenderer[] renderers = {
                 new ARenderer(),
                 new BigRenderer(),
@@ -119,8 +128,11 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
                 elRenderers.put(tag, renderer);
             }
         }
-        this.globalFont = globalFont;
-        globalFontSizeInHalfPoints = globalFontSize == null ? 0 : globalFontSize.toHalfPoints();
+        this.config = config;
+    }
+
+    public HtmlRenderConfig getConfig() {
+        return config;
     }
 
     @Override
@@ -134,9 +146,9 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
         Document document = Jsoup.parseBodyFragment(html);
 
         HtmlRenderContext htmlRenderContext = new HtmlRenderContext(context);
-        htmlRenderContext.setGlobalFont(globalFont);
-        if (globalFontSizeInHalfPoints > 0) {
-            htmlRenderContext.setGlobalFontSize(BigInteger.valueOf(globalFontSizeInHalfPoints));
+        htmlRenderContext.setGlobalFont(config.getGlobalFont());
+        if (config.getGlobalFontSizeInHalfPoints() > 0) {
+            htmlRenderContext.setGlobalFontSize(BigInteger.valueOf(config.getGlobalFontSizeInHalfPoints()));
         }
 
         for (Node node : document.body().childNodes()) {
@@ -196,6 +208,18 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
                 // 新增时会自动创建一行一列，会影响自定义的表格渲染逻辑，故删除
                 xwpfTable.removeRow(0);
                 context.replaceClosestBody(xwpfTable);
+
+                if (container.getPartType() == BodyType.TABLECELL && config.isShowDefaultTableBorderInTableCell()) {
+                    CTTbl ctTbl = xwpfTable.getCTTbl();
+                    CTTblPr tblPr = RenderUtils.getTblPr(ctTbl);
+                    CTTblBorders tblBorders = RenderUtils.getTblBorders(tblPr);
+                    tblBorders.addNewTop().setVal(STBorder.SINGLE);
+                    tblBorders.addNewLeft().setVal(STBorder.SINGLE);
+                    tblBorders.addNewBottom().setVal(STBorder.SINGLE);
+                    tblBorders.addNewRight().setVal(STBorder.SINGLE);
+                    tblBorders.addNewInsideH().setVal(STBorder.SINGLE);
+                    tblBorders.addNewInsideV().setVal(STBorder.SINGLE);
+                }
 
                 RenderUtils.tableStyle(context, xwpfTable, cssStyleDeclaration);
             } else {
