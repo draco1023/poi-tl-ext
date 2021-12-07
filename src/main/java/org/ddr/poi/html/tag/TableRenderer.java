@@ -46,7 +46,6 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.STMerge;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STTblWidth;
 
 import java.math.BigInteger;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -91,7 +90,7 @@ public class TableRenderer implements ElementRenderer {
             colgroup.remove();
         }
         Elements trs = JsoupUtils.childRows(element);
-        Map<Integer, Span> rowSpanMap = new HashMap<>(4);
+        Map<Integer, Span> rowSpanMap = new TreeMap<>();
         TreeMap<Integer, CSSLength> colWidthMap = new TreeMap<>();
         LinkedHashSet<SpanWidth> spanWidths = new LinkedHashSet<>();
         for (int r = 0; r < trs.size(); r++) {
@@ -114,14 +113,8 @@ public class TableRenderer implements ElementRenderer {
                         columnIndex += entry.getValue().getColumn();
                         entry.getValue().setEnabled(false);
                         // 合并行也需要生成单元格
-                        XWPFTableCell cell = createCell(row, c);
-                        CTTcPr ctTcPr = RenderUtils.getTcPr(cell.getCTTc());
-                        ctTcPr.addNewVMerge();
+                        addVMergeCell(row, c, entry.getValue());
                         vMergeCount++;
-                        RenderUtils.setBorder(cell, entry.getValue().getStyle());
-                        if (entry.getValue().getColumn() > 1) {
-                            ctTcPr.addNewGridSpan().setVal(BigInteger.valueOf(entry.getValue().getColumn()));
-                        }
                     }
                 }
                 // 标记行列索引，便于渲染单元格时获取容器
@@ -168,6 +161,9 @@ public class TableRenderer implements ElementRenderer {
                     iterator.remove();
                 } else {
                     entry.getValue().setEnabled(true);
+                }
+                if (columnIndex < colWidthMap.size()) {
+                    addVMergeCell(row, columnIndex++, entry.getValue());
                 }
             }
         }
@@ -254,6 +250,23 @@ public class TableRenderer implements ElementRenderer {
         }
 
         return true;
+    }
+
+    /**
+     * 添加垂直合并的单元格
+     *
+     * @param row 行
+     * @param columnIndex 列索引
+     * @param span 跨行列参数
+     */
+    private void addVMergeCell(XWPFTableRow row, int columnIndex, Span span) {
+        XWPFTableCell cell = createCell(row, columnIndex);
+        CTTcPr ctTcPr = RenderUtils.getTcPr(cell.getCTTc());
+        ctTcPr.addNewVMerge();
+        RenderUtils.setBorder(cell, span.getStyle());
+        if (span.getColumn() > 1) {
+            ctTcPr.addNewGridSpan().setVal(BigInteger.valueOf(span.getColumn()));
+        }
     }
 
     /**
