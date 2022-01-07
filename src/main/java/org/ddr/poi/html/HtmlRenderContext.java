@@ -20,6 +20,7 @@ import com.deepoove.poi.render.RenderContext;
 import com.steadystate.css.dom.CSSStyleDeclarationImpl;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
+import org.apache.poi.ooxml.util.POIXMLUnits;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.util.Units;
 import org.apache.poi.xwpf.usermodel.BodyType;
@@ -42,6 +43,7 @@ import org.ddr.poi.html.util.NumberingContext;
 import org.ddr.poi.html.util.RenderUtils;
 import org.ddr.poi.html.util.WhiteSpaceRule;
 import org.jsoup.internal.StringUtil;
+import org.openxmlformats.schemas.officeDocument.x2006.sharedTypes.STVerticalAlignRun;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTColor;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDrawing;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTFonts;
@@ -55,7 +57,6 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTText;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTUnderline;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STThemeColor;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STUnderline;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.STVerticalAlignRun;
 
 import javax.xml.namespace.QName;
 import java.io.IOException;
@@ -173,27 +174,27 @@ public class HtmlRenderContext extends RenderContext<String> {
 
         CTSectPr sectPr = getXWPFDocument().getDocument().getBody().getSectPr();
         CTPageSz pgSz = sectPr.getPgSz();
-        // 页面尺寸单位是twip
-        int w = pgSz.getW().intValue();
-        pageWidth = new CSSLength(w, CSSLengthUnit.TWIP);
-        int h = pgSz.getH().intValue();
-        pageHeight = new CSSLength(h, CSSLengthUnit.TWIP);
+
+        long w = POIXMLUnits.parseLength(pgSz.xgetW());
+        pageWidth = new CSSLength(w, CSSLengthUnit.EMU);
+        long h = POIXMLUnits.parseLength(pgSz.xgetH());
+        pageHeight = new CSSLength(h, CSSLengthUnit.EMU);
 
         CTPageMar pgMar = sectPr.getPgMar();
-        int top = pgMar.getTop().intValue();
-        marginTop = new CSSLength(top, CSSLengthUnit.TWIP);
-        int right = pgMar.getRight().intValue();
-        marginRight = new CSSLength(right, CSSLengthUnit.TWIP);
-        int bottom = pgMar.getBottom().intValue();
-        marginBottom = new CSSLength(bottom, CSSLengthUnit.TWIP);
-        int left = pgMar.getLeft().intValue();
-        marginLeft = new CSSLength(left, CSSLengthUnit.TWIP);
+        long top = POIXMLUnits.parseLength(pgMar.xgetTop());
+        marginTop = new CSSLength(top, CSSLengthUnit.EMU);
+        long right = POIXMLUnits.parseLength(pgMar.xgetRight());
+        marginRight = new CSSLength(right, CSSLengthUnit.EMU);
+        long bottom = POIXMLUnits.parseLength(pgMar.xgetBottom());
+        marginBottom = new CSSLength(bottom, CSSLengthUnit.EMU);
+        long left = POIXMLUnits.parseLength(pgMar.xgetLeft());
+        marginLeft = new CSSLength(left, CSSLengthUnit.EMU);
 
-        availablePageWidth = new CSSLength(w - left - right, CSSLengthUnit.TWIP).toEMU();
-        availablePageHeight = new CSSLength(h - top - bottom, CSSLengthUnit.TWIP).toEMU();
+        availablePageWidth = (int) (w - left - right);
+        availablePageHeight = (int) (h - top - bottom);
 
-        int fontSize = getXWPFDocument().getStyles().getDefaultRunStyle().getFontSize();
-        defaultFontSize = fontSize > 0 ? new CSSLength(fontSize, CSSLengthUnit.PT) : DEFAULT_FONT_SIZE;
+        Double fontSize = getXWPFDocument().getStyles().getDefaultRunStyle().getFontSizeAsDouble();
+        defaultFontSize = fontSize != null ? new CSSLength(fontSize, CSSLengthUnit.PT) : DEFAULT_FONT_SIZE;
     }
 
     @Override

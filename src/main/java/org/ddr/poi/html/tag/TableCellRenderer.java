@@ -76,8 +76,7 @@ public class TableCellRenderer implements ElementRenderer {
         if (paragraphs.size() > 1) {
             XmlCursor xmlCursor = paragraphs.get(0).getCTP().newCursor();
             if (!xmlCursor.toFirstChild()) {
-                xmlCursor.removeXml();
-                paragraphs.remove(0);
+                ((XWPFTableCell) context.getContainer()).removeParagraph(0);
             }
             xmlCursor.dispose();
         }

@@ -19,6 +19,7 @@ package org.ddr.poi.html.util;
 import com.steadystate.css.dom.CSSStyleDeclarationImpl;
 import com.steadystate.css.dom.CSSValueImpl;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.poi.ooxml.util.POIXMLUnits;
 import org.apache.poi.util.Units;
 import org.apache.poi.xwpf.usermodel.BodyType;
 import org.apache.poi.xwpf.usermodel.IBody;
@@ -38,6 +39,7 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTJc;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTP;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPBdr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPPr;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPPrGeneral;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTRPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
@@ -57,6 +59,7 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.STUnderline;
 import org.w3c.dom.css.CSSValue;
 
 import java.math.BigInteger;
+import java.util.List;
 import java.util.function.Function;
 
 /**
@@ -138,7 +141,7 @@ public class RenderUtils {
         }
     }
 
-    public static CTPPr getPPr(CTStyle ctStyle) {
+    public static CTPPrGeneral getPPr(CTStyle ctStyle) {
         return ctStyle.isSetPPr() ? ctStyle.getPPr() : ctStyle.addNewPPr();
     }
 
@@ -171,11 +174,13 @@ public class RenderUtils {
     }
 
     public static CTColor getColor(CTRPr rPr) {
-        return rPr.isSetColor() ? rPr.getColor() : rPr.addNewColor();
+        List<CTColor> colorList = rPr.getColorList();
+        return colorList.isEmpty() ? rPr.addNewColor() : colorList.get(0);
     }
 
     public static CTUnderline getUnderline(CTRPr rPr) {
-        return rPr.isSetU() ? rPr.getU() : rPr.addNewU();
+        List<CTUnderline> uList = rPr.getUList();
+        return uList.isEmpty() ? rPr.addNewU() : uList.get(0);
     }
 
     /**
@@ -188,21 +193,30 @@ public class RenderUtils {
         if (body.getPartType() == BodyType.DOCUMENT) {
             XWPFDocument document = (XWPFDocument) body;
             CTSectPr sectPr = document.getDocument().getBody().getSectPr();
-            int availableWidth = sectPr.getPgSz().getW().intValue()
-                    - sectPr.getPgMar().getLeft().intValue() - sectPr.getPgMar().getRight().intValue();
-            return Units.TwipsToEMU((short) availableWidth);
+            long availableWidth = POIXMLUnits.parseLength(sectPr.getPgSz().xgetW())
+                    - POIXMLUnits.parseLength(sectPr.getPgMar().xgetLeft())
+                    - POIXMLUnits.parseLength(sectPr.getPgMar().xgetRight());
+            return (int) availableWidth;
 
         } else if (body.getPartType() == BodyType.TABLECELL) {
             XWPFTableCell tableCell = ((XWPFTableCell) body);
             CTTblWidth tcW = tableCell.getCTTc().getTcPr().getTcW();
             if (TableWidthType.DXA.getStWidthType().equals(tcW.getType())) {
-                int availableWidth = tcW.getW().intValue() - TABLE_CELL_MARGIN * 2;
-                return availableWidth > 0 ? Units.TwipsToEMU((short) availableWidth) : 0;
+                long availableWidth = POIXMLUnits.parseLength(tcW.xgetW()) - twipsToEMU(TABLE_CELL_MARGIN) * 2;
+                return availableWidth > 0 ? (int) availableWidth : 0;
             } else if (TableWidthType.PCT.getStWidthType().equals(tcW.getType())) {
                 CTTblWidth tblW = tableCell.getTableRow().getTable().getCTTbl().getTblPr().getTblW();
                 if (TableWidthType.DXA.getStWidthType().equals(tblW.getType())) {
-                    int availableWidth = tblW.getW().intValue() * tcW.getW().intValue() / 5000 - TABLE_CELL_MARGIN * 2;
-                    return availableWidth > 0 ? Units.TwipsToEMU((short) availableWidth) : 0;
+                    String cellWidth = tcW.xgetW().getStringValue();
+                    double percent;
+                    if (cellWidth.endsWith("%")) { // 2011
+                        percent = Double.parseDouble(cellWidth.replace("%", ""));
+                    } else { // 2006
+                        percent = Double.parseDouble(cellWidth) / 5000;
+                    }
+                    long availableWidth = Math.round(POIXMLUnits.parseLength(tblW.xgetW()) * percent)
+                            - twipsToEMU(TABLE_CELL_MARGIN) * 2;
+                    return availableWidth > 0 ? (int) availableWidth : 0;
                 } else if (TableWidthType.NIL.getStWidthType().equals(tblW.getType())) {
                     return 0;
                 } else {
@@ -486,12 +500,22 @@ public class RenderUtils {
     }
 
     /**
+     * poi 5.x 版本{@link Units}中的该方法被删除了
+     *
+     * @param twips (1/20th of a point) typically used for row heights
+     * @return equivalent EMUs
+     */
+    public static int twipsToEMU(int twips) {
+        return twips * Units.EMU_PER_DXA;
+    }
+
+    /**
      * EMU转twip
      *
-     * @see Units#TwipsToEMU
+     * @see #twipsToEMU
      */
     public static int emuToTwips(int emu) {
-        return (int) (emu * 20L / Units.EMU_PER_POINT);
+        return emu / Units.EMU_PER_DXA;
     }
 
     /**
