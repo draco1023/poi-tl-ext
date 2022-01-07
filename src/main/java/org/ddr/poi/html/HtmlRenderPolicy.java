@@ -129,6 +129,14 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
             }
         }
         this.config = config;
+        // custom tag renderer will overwrite the built-in renderer
+        if (config.getCustomRenderers() != null) {
+            for (ElementRenderer customRenderer : config.getCustomRenderers()) {
+                for (String tag : customRenderer.supportedTags()) {
+                    elRenderers.put(tag, customRenderer);
+                }
+            }
+        }
     }
 
     public HtmlRenderConfig getConfig() {

@@ -18,6 +18,8 @@ package org.ddr.poi.html;
 
 import org.ddr.poi.html.util.CSSLength;
 
+import java.util.List;
+
 /**
  * @author Draco
  * @since 2021-10-26
@@ -29,6 +31,7 @@ public class HtmlRenderConfig {
     private int globalFontSizeInHalfPoints;
 
     private boolean showDefaultTableBorderInTableCell;
+    private List<ElementRenderer> customRenderers;
 
     /**
      * @return global font family
@@ -66,5 +69,16 @@ public class HtmlRenderConfig {
 
     public void setShowDefaultTableBorderInTableCell(boolean showDefaultTableBorderInTableCell) {
         this.showDefaultTableBorderInTableCell = showDefaultTableBorderInTableCell;
+    }
+
+    /**
+     * @return custom html tag renderers
+     */
+    public List<ElementRenderer> getCustomRenderers() {
+        return customRenderers;
+    }
+
+    public void setCustomRenderers(List<ElementRenderer> customRenderers) {
+        this.customRenderers = customRenderers;
     }
 }
