@@ -19,6 +19,7 @@ package org.ddr.poi.html.util;
 import com.steadystate.css.dom.CSSStyleDeclarationImpl;
 import com.steadystate.css.dom.CSSValueImpl;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.poi.ooxml.util.POIXMLUnits;
 import org.apache.poi.util.Units;
 import org.apache.poi.xwpf.usermodel.BodyType;
@@ -44,6 +45,7 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTRPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTShd;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSpacing;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTStyle;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTbl;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblBorders;
@@ -54,6 +56,7 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcBorders;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTUnderline;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STBorder;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STLineSpacingRule;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STTblWidth;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STUnderline;
 import org.w3c.dom.css.CSSValue;
@@ -90,6 +93,10 @@ public class RenderUtils {
      * 表格单元格边距
      */
     public static final int TABLE_CELL_MARGIN = 108;
+    /**
+     * 段落行距系数
+     */
+    public static final int SPACING_FACTOR = 240;
 
     /**
      * 文本对齐值映射
@@ -173,6 +180,20 @@ public class RenderUtils {
         return pPr.isSetInd() ? pPr.getInd() : pPr.addNewInd();
     }
 
+    public static CTInd getInd(XWPFParagraph paragraph) {
+        CTPPr pPr = getPPr(paragraph.getCTP());
+        return getInd(pPr);
+    }
+
+    public static CTSpacing getSpacing(CTPPr pPr) {
+        return pPr.isSetSpacing() ? pPr.getSpacing() : pPr.addNewSpacing();
+    }
+
+    public static CTSpacing getSpacing(XWPFParagraph paragraph) {
+        CTPPr pPr = getPPr(paragraph.getCTP());
+        return getSpacing(pPr);
+    }
+
     public static CTColor getColor(CTRPr rPr) {
         List<CTColor> colorList = rPr.getColorList();
         return colorList.isEmpty() ? rPr.addNewColor() : colorList.get(0);
@@ -254,9 +275,92 @@ public class RenderUtils {
         // border
         setBorder(paragraph, cssStyleDeclaration);
 
-        // TODO spacing
+        // spacing
+        setSpacing(context, paragraph, cssStyleDeclaration);
 
         // indent
+        setIndentation(context, paragraph, cssStyleDeclaration);
+
+        // background
+        String backgroundColor = cssStyleDeclaration.getBackgroundColor();
+        if (StringUtils.isNotBlank(backgroundColor)) {
+            String color = Colors.fromStyle(backgroundColor, null);
+            if (color != null) {
+                CTPPr pPr = getPPr(paragraph.getCTP());
+                CTShd shd = getShd(pPr);
+                shd.setFill(color);
+            }
+        }
+    }
+
+    /**
+     * 设置段落行距
+     *
+     * @param context 渲染上下文
+     * @param paragraph 段落
+     * @param cssStyleDeclaration CSS样式声明
+     */
+    private static void setSpacing(HtmlRenderContext context, XWPFParagraph paragraph,
+                                   CSSStyleDeclarationImpl cssStyleDeclaration) {
+        // margin-top
+        CSSLength marginTop = CSSLength.of(cssStyleDeclaration.getMarginTop().toLowerCase());
+        if (marginTop.isValid() && !marginTop.isPercent()) {
+            getSpacing(paragraph).setBefore(BigInteger.valueOf(emuToTwips(context.lengthToEMU(marginTop))));
+        }
+
+        // margin-bottom
+        CSSLength marginBottom = CSSLength.of(cssStyleDeclaration.getMarginBottom().toLowerCase());
+        if (marginBottom.isValid() && !marginBottom.isPercent()) {
+            getSpacing(paragraph).setAfter(BigInteger.valueOf(emuToTwips(context.lengthToEMU(marginBottom))));
+        }
+
+        // line-height
+        String lineHeight = context.getPropertyValue(HtmlConstants.CSS_LINE_HEIGHT);
+        if (StringUtils.isNotBlank(lineHeight)) {
+            CSSLength cssLength = CSSLength.of(lineHeight);
+            if (cssLength.isValid()) {
+                if (cssLength.isPercent()) {
+                    CTSpacing spacing = getSpacing(paragraph);
+                    spacing.setLineRule(STLineSpacingRule.AUTO);
+                    spacing.setLine(BigInteger.valueOf(Math.round(cssLength.unitValue() * SPACING_FACTOR)));
+                } else if (cssLength.getValue() > 0) {
+                    CTSpacing spacing = getSpacing(paragraph);
+                    spacing.setLineRule(STLineSpacingRule.EXACT);
+                    spacing.setLine(BigInteger.valueOf(emuToTwips(context.lengthToEMU(cssLength))));
+                }
+            } else if (NumberUtils.isParsable(lineHeight)) {
+                double value = Double.parseDouble(lineHeight);
+                if (value > 0) {
+                    CTSpacing spacing = getSpacing(paragraph);
+                    spacing.setLineRule(STLineSpacingRule.AUTO);
+                    spacing.setLine(BigInteger.valueOf(Math.round(value * SPACING_FACTOR)));
+                }
+            }
+        }
+    }
+
+    /**
+     * 设置段落缩进
+     *
+     * @param context 渲染上下文
+     * @param paragraph 段落
+     * @param cssStyleDeclaration CSS样式声明
+     */
+    private static void setIndentation(HtmlRenderContext context, XWPFParagraph paragraph,
+                                       CSSStyleDeclarationImpl cssStyleDeclaration) {
+        // margin-left
+        CSSLength marginLeft = CSSLength.of(cssStyleDeclaration.getMarginLeft().toLowerCase());
+        if (marginLeft.isValid() && !marginLeft.isPercent()) {
+            getInd(paragraph).setLeft(BigInteger.valueOf(emuToTwips(context.lengthToEMU(marginLeft))));
+        }
+
+        // margin-right
+        CSSLength marginRight = CSSLength.of(cssStyleDeclaration.getMarginRight().toLowerCase());
+        if (marginRight.isValid() && !marginRight.isPercent()) {
+            getInd(paragraph).setRight(BigInteger.valueOf(emuToTwips(context.lengthToEMU(marginRight))));
+        }
+
+        // text-indent
         CSSValueImpl textIndent = (CSSValueImpl) cssStyleDeclaration.getPropertyCSSValue(HtmlConstants.CSS_TEXT_INDENT);
         if (textIndent != null) {
             int length = textIndent.getLength();
@@ -270,17 +374,6 @@ public class RenderUtils {
                         break;
                     }
                 }
-            }
-        }
-
-        // background
-        String backgroundColor = cssStyleDeclaration.getBackgroundColor();
-        if (StringUtils.isNotBlank(backgroundColor)) {
-            String color = Colors.fromStyle(backgroundColor, null);
-            if (color != null) {
-                CTPPr pPr = getPPr(paragraph.getCTP());
-                CTShd shd = getShd(pPr);
-                shd.setFill(color);
             }
         }
     }
