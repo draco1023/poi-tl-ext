@@ -88,6 +88,7 @@ public interface HtmlConstants {
     String ATTR_ROWSPAN = "rowspan";
     String ATTR_COLSPAN = "colspan";
     String ATTR_HREF = "href";
+    String ATTR_TYPE = "type";
     /**
      * 自定义属性：行索引
      */
@@ -150,6 +151,8 @@ public interface HtmlConstants {
     String CSS_BORDER_LEFT_COLOR = "border-left-color";
     String CSS_FLOAT = "float";
     String CSS_WHITE_SPACE = "white-space";
+    String CSS_LIST_STYLE = "list-style";
+    String CSS_LIST_STYLE_TYPE = "list-style-type";
 
     String NORMAL = "normal";
     String ITALIC = "italic";

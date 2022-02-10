@@ -22,17 +22,19 @@ import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFNumbering;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTAbstractNum;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTFonts;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTInd;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTLvl;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STHint;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STJc;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STMultiLevelType;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.STNumberFormat;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * 列表上下文
@@ -45,16 +47,12 @@ public class NumberingContext {
      * 每级缩进
      */
     private static final int INDENT = 360;
-    /**
-     * 无序列表符号
-     */
-    public static final String BULLET_CHAR = "⚫";
     private final XWPFDocument document;
     private int nextAbstractNumberId;
     private int nextNumberingLevel;
 
-    private List<STNumberFormat.Enum> numberFormats;
-    private Map<String, BigInteger> numberIdMap = new HashMap<>(4);
+    private List<ListStyleType> numberFormats;
+    private TreeMap<String, BigInteger> numberIdMap = new TreeMap<>(Collections.reverseOrder());
     private List<XWPFParagraph> numberingParagraphs;
 
     public NumberingContext(XWPFDocument document) {
@@ -66,7 +64,7 @@ public class NumberingContext {
      *
      * @param format 列表符号类型
      */
-    public void startLevel(STNumberFormat.Enum format) {
+    public void startLevel(ListStyleType format) {
         int level = nextNumberingLevel++;
         if (level == 0) {
             numberingParagraphs = new ArrayList<>(8);
@@ -80,14 +78,25 @@ public class NumberingContext {
      */
     public void endLevel() {
         nextNumberingLevel--;
-        if (nextNumberingLevel == 0) {
-            String key = getFormatKey();
-            BigInteger numberId = getNumberId(key);
 
-            for (XWPFParagraph paragraph : numberingParagraphs) {
+        String key = getFormatKey();
+        BigInteger numberId = getNumberId(key);
+
+        BigInteger currentLevel = BigInteger.valueOf(nextNumberingLevel);
+        for (int i = numberingParagraphs.size() - 1; i >= 0; i--) {
+            XWPFParagraph paragraph = numberingParagraphs.get(i);
+            if (currentLevel.equals(paragraph.getNumIlvl())) {
                 paragraph.setNumID(numberId);
+                numberingParagraphs.remove(i);
+            } else {
+                break;
             }
+        }
+        if (!numberFormats.isEmpty()) {
+            numberFormats.remove(numberFormats.size() - 1);
+        }
 
+        if (nextNumberingLevel == 0) {
             numberingParagraphs = null;
             numberFormats = null;
         }
@@ -131,16 +140,22 @@ public class NumberingContext {
                     ctAbstractNum.addNewMultiLevelType().setVal(STMultiLevelType.HYBRID_MULTILEVEL);
 
                     for (int i = 0; i < numberFormats.size(); i++) {
-                        STNumberFormat.Enum format = numberFormats.get(i);
+                        ListStyleType listStyleType = numberFormats.get(i);
                         CTLvl cTLvl = ctAbstractNum.addNewLvl();
                         CTInd ind = cTLvl.addNewPPr().addNewInd();
                         ind.setLeft(BigInteger.valueOf(INDENT * i));
 
-                        cTLvl.addNewNumFmt().setVal(format);
-                        cTLvl.addNewLvlText().setVal(format == STNumberFormat.BULLET ? BULLET_CHAR : getOrderedLevelText(i));
+                        cTLvl.addNewNumFmt().setVal(listStyleType.getFormat());
+                        cTLvl.addNewLvlText().setVal(getLevelText(listStyleType, i));
                         cTLvl.addNewStart().setVal(BigInteger.ONE);
                         cTLvl.setIlvl(BigInteger.valueOf(i));
                         cTLvl.addNewLvlJc().setVal(STJc.LEFT);
+                        if (StringUtils.isNotBlank(listStyleType.getFont())) {
+                            CTFonts ctFonts = cTLvl.addNewRPr().addNewRFonts();
+                            ctFonts.setAscii(listStyleType.getFont());
+                            ctFonts.setHAnsi(listStyleType.getFont());
+                            ctFonts.setHint(STHint.DEFAULT);
+                        }
                     }
 
                     numbering.addAbstractNum(new XWPFAbstractNum(ctAbstractNum, numbering));
@@ -152,6 +167,16 @@ public class NumberingContext {
             }
         }
         return numberId;
+    }
+
+    private String getLevelText(ListStyleType listStyleType, int i) {
+        if (listStyleType.getText() == null) {
+            return "";
+        }
+        if (listStyleType.getText().length() == 0) {
+            return getOrderedLevelText(i);
+        }
+        return listStyleType.getText();
     }
 
     /**
@@ -166,8 +191,8 @@ public class NumberingContext {
 
     private String getFormatKey() {
         StringBuilder sb = new StringBuilder();
-        for (STNumberFormat.Enum format : numberFormats) {
-            sb.append(format.intValue()).append(StringUtils.SPACE);
+        for (ListStyleType format : numberFormats) {
+            sb.append(format.getName()).append(StringUtils.SPACE);
         }
         return sb.toString();
     }
