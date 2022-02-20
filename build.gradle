@@ -43,8 +43,8 @@ repositories {
 }
 
 dependencies {
-    api 'com.deepoove:poi-tl:1.11.0'
-    api 'org.apache.poi:poi-ooxml-full:5.1.0'
+    api 'com.deepoove:poi-tl:1.11.1'
+    api 'org.apache.poi:poi-ooxml-full:5.2.0'
     api 'org.apache.commons:commons-lang3:3.10'
     api 'commons-io:commons-io:2.11.0'
     implementation 'net.sourceforge.cssparser:cssparser:0.9.29'

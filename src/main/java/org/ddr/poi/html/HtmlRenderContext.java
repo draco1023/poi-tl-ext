@@ -60,7 +60,6 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTStyle;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTText;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTUnderline;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.STOnOff;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STStyleType;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STThemeColor;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STUnderline;
@@ -230,7 +229,7 @@ public class HtmlRenderContext extends RenderContext<String> {
 
             XWPFStyles styles = getXWPFDocument().getStyles();
             CTStyle newCTStyle = CTStyle.Factory.newInstance();
-            newCTStyle.setCustomStyle(STOnOff.TRUE);
+            newCTStyle.setCustomStyle(true);
             newCTStyle.setType(STStyleType.PARAGRAPH);
             newCTStyle.addNewHidden();
             newCTStyle.setRPr(run.getCTR().getRPr());
