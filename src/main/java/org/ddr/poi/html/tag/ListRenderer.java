@@ -16,11 +16,12 @@
 
 package org.ddr.poi.html.tag;
 
+import org.apache.commons.lang3.StringUtils;
 import org.ddr.poi.html.ElementRenderer;
 import org.ddr.poi.html.HtmlConstants;
 import org.ddr.poi.html.HtmlRenderContext;
+import org.ddr.poi.html.util.ListStyleType;
 import org.jsoup.nodes.Element;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.STNumberFormat;
 
 /**
  * 列表渲染器
@@ -40,22 +41,29 @@ public class ListRenderer implements ElementRenderer {
      */
     @Override
     public boolean renderStart(Element element, HtmlRenderContext context) {
-        context.getNumberingContext().startLevel(determineNumberFormat(element));
+        context.getNumberingContext().startLevel(determineNumberFormat(context, element));
         return true;
     }
 
-    private STNumberFormat.Enum determineNumberFormat(Element element) {
-        // TODO 支持ol的type属性以及css的list-style-type
-        STNumberFormat.Enum format;
+    private ListStyleType determineNumberFormat(HtmlRenderContext context, Element element) {
+        String listStyleType = context.currentElementStyle()
+                .getPropertyValue(HtmlConstants.CSS_LIST_STYLE_TYPE).toLowerCase();
+        ListStyleType format;
         switch (element.tag().normalName()) {
             case HtmlConstants.TAG_OL:
-                format = STNumberFormat.DECIMAL;
+                if (StringUtils.isNotBlank(listStyleType)) {
+                    format = ListStyleType.Ordered.of(listStyleType);
+                } else {
+                    // 支持ol的type属性
+                    String type = element.attr(HtmlConstants.ATTR_TYPE);
+                    format = ListStyleType.Ordered.of(type);
+                }
                 break;
             case HtmlConstants.TAG_UL:
-                format = STNumberFormat.BULLET;
+                format = ListStyleType.Unordered.of(listStyleType);
                 break;
             default:
-                format = STNumberFormat.NONE;
+                format = ListStyleType.Unordered.NONE;
         }
         return format;
     }

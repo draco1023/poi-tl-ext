@@ -139,6 +139,9 @@ public class CSSStyleUtils {
                     case HtmlConstants.CSS_PADDING:
                         splitBox(valueList, length, style, i, BoxProperty.PADDING);
                         break;
+                    case HtmlConstants.CSS_LIST_STYLE:
+                        splitListStyle(valueList, length, style, i);
+                        break;
                 }
             }
         }
@@ -306,6 +309,19 @@ public class CSSStyleUtils {
             case 4:
                 boxProperty.setValues(style, i, valueList.item(0), valueList.item(1), valueList.item(2), valueList.item(3));
                 break;
+        }
+    }
+
+    private static void splitListStyle(CSSValueImpl valueList, int length, CSSStyleDeclarationImpl style, int i) {
+        switch (length) {
+            case 0:
+            case 1:
+                if (StringUtils.isNotBlank(valueList.getCssText())) {
+                    style.getProperties().add(i, new Property(HtmlConstants.CSS_LIST_STYLE_TYPE, valueList, false));
+                }
+                break;
+            default:
+                style.getProperties().add(i, new Property(HtmlConstants.CSS_LIST_STYLE_TYPE, valueList.item(0), false));
         }
     }
 }

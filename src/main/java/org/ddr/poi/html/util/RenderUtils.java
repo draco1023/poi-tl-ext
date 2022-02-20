@@ -53,6 +53,7 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblWidth;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTc;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcBorders;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcMar;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTUnderline;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STBorder;
@@ -170,6 +171,15 @@ public class RenderUtils {
 
     public static CTTcPr getTcPr(CTTc tc) {
         return tc.isSetTcPr() ? tc.getTcPr() : tc.addNewTcPr();
+    }
+
+    public static CTTcMar getTcMar(CTTcPr tcPr) {
+        return tcPr.isSetTcMar() ? tcPr.getTcMar() : tcPr.addNewTcMar();
+    }
+
+    public static CTTcMar getTcMar(XWPFTableCell cell) {
+        CTTcPr tcPr = getTcPr(cell.getCTTc());
+        return getTcMar(tcPr);
     }
 
     public static CTShd getShd(CTPPr pPr) {
@@ -672,7 +682,8 @@ public class RenderUtils {
             return;
         }
 
-        // TODO padding
+        // padding
+        setCellPadding(context, cell, cssStyleDeclaration);
 
         // alignment
         XWPFTableCell.XWPFVertAlign align = alignTableCell(cssStyleDeclaration.getVerticalAlign());
@@ -692,6 +703,48 @@ public class RenderUtils {
                 CTShd shd = getShd(tcPr);
                 shd.setFill(color);
             }
+        }
+    }
+
+    /**
+     * 设置单元格边距
+     *
+     * @param context 渲染上下文
+     * @param cell 表格
+     * @param cssStyleDeclaration CSS样式声明
+     */
+    private static void setCellPadding(HtmlRenderContext context, XWPFTableCell cell,
+                                       CSSStyleDeclarationImpl cssStyleDeclaration) {
+        // margin-top
+        CSSLength paddingTop = CSSLength.of(cssStyleDeclaration.getPaddingTop().toLowerCase());
+        if (paddingTop.isValid() && !paddingTop.isPercent() && paddingTop.getValue() >= 0) {
+            CTTblWidth top = getTcMar(cell).addNewTop();
+            top.setType(STTblWidth.DXA);
+            top.setW(BigInteger.valueOf(emuToTwips(context.lengthToEMU(paddingTop))));
+        }
+
+        // margin-right
+        CSSLength paddingRight = CSSLength.of(cssStyleDeclaration.getPaddingRight().toLowerCase());
+        if (paddingRight.isValid() && !paddingRight.isPercent() && paddingRight.getValue() >= 0) {
+            CTTblWidth right = getTcMar(cell).addNewRight();
+            right.setType(STTblWidth.DXA);
+            right.setW(BigInteger.valueOf(emuToTwips(context.lengthToEMU(paddingRight))));
+        }
+
+        // margin-bottom
+        CSSLength paddingBottom = CSSLength.of(cssStyleDeclaration.getPaddingBottom().toLowerCase());
+        if (paddingBottom.isValid() && !paddingBottom.isPercent() && paddingBottom.getValue() >= 0) {
+            CTTblWidth bottom = getTcMar(cell).addNewBottom();
+            bottom.setType(STTblWidth.DXA);
+            bottom.setW(BigInteger.valueOf(emuToTwips(context.lengthToEMU(paddingBottom))));
+        }
+
+        // margin-left
+        CSSLength paddingLeft = CSSLength.of(cssStyleDeclaration.getPaddingLeft().toLowerCase());
+        if (paddingLeft.isValid() && !paddingLeft.isPercent() && paddingLeft.getValue() >= 0) {
+            CTTblWidth left = getTcMar(cell).addNewLeft();
+            left.setType(STTblWidth.DXA);
+            left.setW(BigInteger.valueOf(emuToTwips(context.lengthToEMU(paddingLeft))));
         }
     }
 

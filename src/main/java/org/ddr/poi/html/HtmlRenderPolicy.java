@@ -231,7 +231,7 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
 
                 RenderUtils.tableStyle(context, xwpfTable, cssStyleDeclaration);
             } else {
-                XWPFParagraph xwpfParagraph = container.insertNewParagraph(xmlCursor);
+                XWPFParagraph xwpfParagraph = context.newParagraph(container, xmlCursor);
                 xmlCursor.dispose();
                 if (xwpfParagraph == null) {
                     log.warn("Can not add new paragraph for element: {}, attributes: {}", element.tagName(), element.attributes().html());
@@ -272,7 +272,7 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
                     xmlCursor.toNextToken();
                     if (isTableTag) {
                         // 插入一个段落，防止表格粘连在一起
-                        container.insertNewParagraph(xmlCursor);
+                        context.newParagraph(container, xmlCursor);
                         xmlCursor.toNextToken();
                     }
                     break;
@@ -287,7 +287,7 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
             if (isTableTag && xmlCursor.toPrevSibling()) {
                 if (xmlCursor.getObject() instanceof CTTbl) {
                     xmlCursor.toNextSibling();
-                    container.insertNewParagraph(xmlCursor);
+                    context.newParagraph(container, xmlCursor);
                 }
             }
             xmlCursor.pop();
