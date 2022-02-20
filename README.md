@@ -3,11 +3,23 @@
 
 # Maven
 
+poi 4.x poi-tl 1.11 以前的版本
+
 ```xml
 <dependency>
     <groupId>io.github.draco1023</groupId>
     <artifactId>poi-tl-ext</artifactId>
-    <version>0.3.12</version>
+    <version>0.3.13</version>
+</dependency>
+```
+
+poi 5.x poi-tl 1.11.0+
+
+```xml
+<dependency>
+    <groupId>io.github.draco1023</groupId>
+    <artifactId>poi-tl-ext</artifactId>
+    <version>0.3.13-beta</version>
 </dependency>
 ```
 
