@@ -25,10 +25,13 @@ import org.apache.poi.util.Units;
 import org.apache.poi.xwpf.usermodel.BodyType;
 import org.apache.poi.xwpf.usermodel.IBody;
 import org.apache.poi.xwpf.usermodel.IBodyElement;
+import org.apache.poi.xwpf.usermodel.IRunBody;
 import org.apache.poi.xwpf.usermodel.XWPFHyperlinkRun;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRelation;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
+import org.apache.poi.xwpf.usermodel.XWPFStyle;
+import org.apache.poi.xwpf.usermodel.XWPFStyles;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.xmlbeans.XmlCursor;
 import org.apache.xmlbeans.impl.xb.xmlschema.SpaceAttribute;
@@ -41,6 +44,7 @@ import org.ddr.poi.html.util.NamedFontSize;
 import org.ddr.poi.html.util.NumberingContext;
 import org.ddr.poi.html.util.RenderUtils;
 import org.ddr.poi.html.util.WhiteSpaceRule;
+import org.ddr.poi.util.XmlUtils;
 import org.jsoup.internal.StringUtil;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTColor;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDrawing;
@@ -51,8 +55,11 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTRPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTStyle;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTText;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTUnderline;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STOnOff;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STStyleType;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STThemeColor;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STUnderline;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STVerticalAlignRun;
@@ -142,6 +149,10 @@ public class HtmlRenderContext extends RenderContext<String> {
      * 可用页面高度
      */
     private final int availablePageHeight;
+    /**
+     * 占位符所在段落的样式ID
+     */
+    private String placeholderStyleId;
 
     /**
      * 当前Run元素，可能为超链接
@@ -194,6 +205,50 @@ public class HtmlRenderContext extends RenderContext<String> {
 
         int fontSize = getXWPFDocument().getStyles().getDefaultRunStyle().getFontSize();
         defaultFontSize = fontSize > 0 ? new CSSLength(fontSize, CSSLengthUnit.PT) : DEFAULT_FONT_SIZE;
+
+        extractPlaceholderStyle();
+    }
+
+    /**
+     * 抽取占位符所在段落的样式
+     */
+    private void extractPlaceholderStyle() {
+        XWPFRun run = getRun();
+        IRunBody runParent = run.getParent();
+        if (runParent instanceof XWPFParagraph) {
+            XWPFParagraph paragraph = (XWPFParagraph) runParent;
+            String styleId = paragraph.getStyleID();
+            boolean existsRPr = run.getCTR().isSetRPr();
+
+            if (styleId == null && !existsRPr) {
+                return;
+            } else if (styleId != null && !existsRPr) {
+                placeholderStyleId = styleId;
+                return;
+            }
+
+            XWPFStyles styles = getXWPFDocument().getStyles();
+            CTStyle newCTStyle = CTStyle.Factory.newInstance();
+            newCTStyle.setCustomStyle(STOnOff.TRUE);
+            newCTStyle.setType(STStyleType.PARAGRAPH);
+            newCTStyle.addNewHidden();
+            newCTStyle.setRPr(run.getCTR().getRPr());
+            XmlUtils.removeNamespaces(newCTStyle.getRPr());
+
+            String newStyleId = styleId + getXWPFDocument().getStyles().getNumberOfStyles();
+            newCTStyle.setStyleId(newStyleId);
+            newCTStyle.addNewName().setVal(newStyleId);
+            placeholderStyleId = newStyleId;
+
+            if (styleId != null) {
+                newCTStyle.addNewBasedOn().setVal(styleId);
+            }
+
+            XWPFStyle newStyle = new XWPFStyle(newCTStyle, styles);
+            styles.addStyle(newStyle);
+
+            paragraph.setStyle(newStyleId);
+        }
     }
 
     @Override
@@ -277,7 +332,7 @@ public class HtmlRenderContext extends RenderContext<String> {
                 XmlCursor xmlCursor = ((XWPFTable) body).getCTTbl().newCursor();
                 xmlCursor.toEndToken();
                 xmlCursor.toNextToken();
-                XWPFParagraph paragraph = getContainer().insertNewParagraph(xmlCursor);
+                XWPFParagraph paragraph = newParagraph(null, xmlCursor);
                 replaceClosestBody(paragraph);
                 xmlCursor.dispose();
                 return paragraph;
@@ -312,6 +367,24 @@ public class HtmlRenderContext extends RenderContext<String> {
      */
     public void endHyperlink() {
         currentRun = null;
+    }
+
+    /**
+     * 新建段落
+     *
+     * @param container 容器
+     * @param cursor xml指针
+     * @return 段落
+     */
+    public XWPFParagraph newParagraph(IBody container, XmlCursor cursor) {
+        if (container == null) {
+            container = getContainer();
+        }
+        XWPFParagraph xwpfParagraph = container.insertNewParagraph(cursor);
+        if (placeholderStyleId != null) {
+            xwpfParagraph.setStyle(placeholderStyleId);
+        }
+        return xwpfParagraph;
     }
 
     /**
