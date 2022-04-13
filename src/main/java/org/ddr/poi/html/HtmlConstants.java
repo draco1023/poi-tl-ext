@@ -81,6 +81,8 @@ public interface HtmlConstants {
     String TAG_NOSCRIPT = "noscript";
     String TAG_TEMPLATE = "template";
 
+    String TAG_SVG = "svg";
+
     String ATTR_STYLE = "style";
     String ATTR_SRC = "src";
     String ATTR_WIDTH = "width";
