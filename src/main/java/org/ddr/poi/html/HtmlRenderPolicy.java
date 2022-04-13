@@ -46,14 +46,15 @@ import org.ddr.poi.html.tag.OmittedRenderer;
 import org.ddr.poi.html.tag.SmallRenderer;
 import org.ddr.poi.html.tag.SubscriptRenderer;
 import org.ddr.poi.html.tag.SuperscriptRenderer;
+import org.ddr.poi.html.tag.SvgRenderer;
 import org.ddr.poi.html.tag.TableCellRenderer;
 import org.ddr.poi.html.tag.TableRenderer;
 import org.ddr.poi.html.tag.UnderlineRenderer;
 import org.ddr.poi.html.tag.WalkThroughRenderer;
 import org.ddr.poi.html.util.CSSLength;
 import org.ddr.poi.html.util.CSSStyleUtils;
+import org.ddr.poi.html.util.JsoupUtils;
 import org.ddr.poi.html.util.RenderUtils;
-import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
@@ -117,6 +118,7 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
                 new SmallRenderer(),
                 new SubscriptRenderer(),
                 new SuperscriptRenderer(),
+                new SvgRenderer(),
                 new TableCellRenderer(),
                 new TableRenderer(),
                 new UnderlineRenderer(),
@@ -151,7 +153,8 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
     @Override
     public void doRender(RenderContext<String> context) throws Exception {
         String html = FORMATTED_PATTERN.matcher(context.getData()).replaceAll(FORMATTED_REPLACEMENT);
-        Document document = Jsoup.parseBodyFragment(html);
+        Document document = JsoupUtils.parseBodyFragment(html);
+        document.outputSettings().prettyPrint(false).indentAmount(0);
 
         HtmlRenderContext htmlRenderContext = new HtmlRenderContext(context);
         htmlRenderContext.setGlobalFont(config.getGlobalFont());

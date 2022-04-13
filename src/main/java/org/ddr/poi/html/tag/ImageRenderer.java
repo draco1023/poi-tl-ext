@@ -23,6 +23,7 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.util.Units;
 import org.apache.poi.xwpf.usermodel.Document;
+import org.apache.poi.xwpf.usermodel.SVGPictureData;
 import org.ddr.poi.html.ElementRenderer;
 import org.ddr.poi.html.HtmlConstants;
 import org.ddr.poi.html.HtmlRenderContext;
@@ -55,21 +56,44 @@ public class ImageRenderer implements ElementRenderer {
     private static final String HTTP = "http";
     private static final String DOUBLE_SLASH = "//";
     private static final String BASE64_PREFIX = "data:";
-    private static final Map<String, Integer> PICTURE_TYPES = new HashMap<>(12);
+    private static final Map<String, ImageType> PICTURE_TYPES = new HashMap<>(ImageType.values().length);
 
     static {
-        PICTURE_TYPES.put("emf", Document.PICTURE_TYPE_EMF);
-        PICTURE_TYPES.put("wmf", Document.PICTURE_TYPE_WMF);
-        PICTURE_TYPES.put("pict", Document.PICTURE_TYPE_PICT);
-        PICTURE_TYPES.put("jpeg", Document.PICTURE_TYPE_JPEG);
-        PICTURE_TYPES.put("jpg", Document.PICTURE_TYPE_JPEG);
-        PICTURE_TYPES.put("png", Document.PICTURE_TYPE_PNG);
-        PICTURE_TYPES.put("dib", Document.PICTURE_TYPE_DIB);
-        PICTURE_TYPES.put("gif", Document.PICTURE_TYPE_GIF);
-        PICTURE_TYPES.put("tiff", Document.PICTURE_TYPE_TIFF);
-        PICTURE_TYPES.put("eps", Document.PICTURE_TYPE_EPS);
-        PICTURE_TYPES.put("bmp", Document.PICTURE_TYPE_BMP);
-        PICTURE_TYPES.put("wpg", Document.PICTURE_TYPE_WPG);
+        for (ImageType type : ImageType.values()) {
+            PICTURE_TYPES.put(type.getExtension(), type);
+        }
+
+        SVGPictureData.initRelation();
+    }
+
+    enum ImageType {
+        EMF(Document.PICTURE_TYPE_EMF),
+        WMF(Document.PICTURE_TYPE_WMF),
+        PICT(Document.PICTURE_TYPE_PICT),
+        JPEG(Document.PICTURE_TYPE_JPEG),
+        JPG(Document.PICTURE_TYPE_JPEG),
+        PNG(Document.PICTURE_TYPE_PNG),
+        DIB(Document.PICTURE_TYPE_DIB),
+        GIF(Document.PICTURE_TYPE_GIF),
+        TIF(Document.PICTURE_TYPE_TIFF),
+        TIFF(Document.PICTURE_TYPE_TIFF),
+        EPS(Document.PICTURE_TYPE_EPS),
+        BMP(Document.PICTURE_TYPE_BMP),
+        WPG(Document.PICTURE_TYPE_WPG);
+
+        private final int type;
+
+        ImageType(int type) {
+            this.type = type;
+        }
+
+        public String getExtension() {
+            return name().toLowerCase();
+        }
+
+        public int getType() {
+            return type;
+        }
     }
 
     /**
@@ -104,7 +128,6 @@ public class ImageRenderer implements ElementRenderer {
         String data = src.substring(index + 1);
         String format = StringUtils.substringBetween(src.substring(0, index), HtmlConstants.SLASH, HtmlConstants.SEMICOLON);
         // org.apache.poi.sl.usermodel.PictureData.PictureType
-        // FIXME 尚不支持svg
         if (format.contains(HtmlConstants.MINUS)) {
             format = StringUtils.substringAfterLast(format, HtmlConstants.MINUS);
         } else if (format.contains(HtmlConstants.PLUS)) {
@@ -123,16 +146,25 @@ public class ImageRenderer implements ElementRenderer {
             image = ImageIO.read(inputStream);
             inputStream.reset();
 
-            Integer type = PICTURE_TYPES.getOrDefault(format,
-                    image.getColorModel().hasAlpha() ? Document.PICTURE_TYPE_PNG : Document.PICTURE_TYPE_JPEG);
-
-            addPicture(element, context, inputStream, type, image.getWidth(), image.getHeight());
+            int type = PICTURE_TYPES.getOrDefault(format, typeOf(image)).getType();
+            boolean svg = HtmlConstants.TAG_SVG.equals(format);
+            addPicture(element, context, inputStream, type, image.getWidth(), image.getHeight(), svg ? bytes : null);
         } catch (IOException | InvalidFormatException e) {
             log.warn("Failed to load image: {}", src, e);
         } finally {
             // 释放资源
             image = null;
         }
+    }
+
+    /**
+     * 根据图片反推类型
+     *
+     * @param image 图片
+     * @return 图片类型
+     */
+    protected ImageType typeOf(BufferedImage image) {
+        return image.getColorModel().hasAlpha() ? ImageType.PNG : ImageType.JPG;
     }
 
     /**
@@ -144,7 +176,7 @@ public class ImageRenderer implements ElementRenderer {
      */
     private void handleRemoteImage(Element element, HtmlRenderContext context, String src) {
         String extension = FilenameUtils.getExtension(StringUtils.substringBefore(src, HtmlConstants.QUESTION)).toLowerCase();
-        Integer type = PICTURE_TYPES.get(extension);
+        ImageType type = PICTURE_TYPES.get(extension);
 
         ByteArrayCopyStream outputStream = null;
         InputStream inputStream = null;
@@ -152,7 +184,18 @@ public class ImageRenderer implements ElementRenderer {
         BufferedImage image;
         try {
             connect = HttpURLConnectionUtils.connect(src);
-            image = ImageIO.read(connect.getInputStream());
+            InputStream urlStream = connect.getInputStream();
+            boolean svg = connect.getHeaderField("content-type").contains(HtmlConstants.TAG_SVG);
+            byte[] svgData = null;
+            if (svg) {
+                outputStream = new ByteArrayCopyStream(urlStream.available());
+                IOUtils.copy(urlStream, outputStream);
+                svgData = outputStream.toByteArray();
+                image = ImageIO.read(outputStream.toInput());
+            } else {
+                image = ImageIO.read(urlStream);
+            }
+
             if (image == null) {
                 log.warn("Illegal image url: {}", src);
                 return;
@@ -161,18 +204,12 @@ public class ImageRenderer implements ElementRenderer {
             outputStream = new ByteArrayCopyStream(size);
 
             if (type == null) {
-                if (image.getColorModel().hasAlpha()) {
-                    extension = "png";
-                    type = Document.PICTURE_TYPE_PNG;
-                } else {
-                    extension = "jpeg";
-                    type = Document.PICTURE_TYPE_JPEG;
-                }
+                type = typeOf(image);
             }
 
-            ImageIO.write(image, extension, outputStream);
+            ImageIO.write(image, type.getExtension(), outputStream);
             inputStream = outputStream.toInput();
-            addPicture(element, context, inputStream, type, image.getWidth(), image.getHeight());
+            addPicture(element, context, inputStream, type.getType(), image.getWidth(), image.getHeight(), svgData);
         } catch (IOException | InvalidFormatException e) {
             log.warn("Failed to load image: {}", src, e);
         } finally {
@@ -203,9 +240,11 @@ public class ImageRenderer implements ElementRenderer {
      * @param type 图片类型
      * @param widthInPixels 图片宽度（像素）
      * @param heightInPixels 图片高度（像素）
+     * @param svgData SVG数据
      */
-    private void addPicture(Element element, HtmlRenderContext context, InputStream inputStream, int type,
-                            int widthInPixels, int heightInPixels) throws InvalidFormatException, IOException {
+    protected void addPicture(Element element, HtmlRenderContext context, InputStream inputStream, int type,
+                              int widthInPixels, int heightInPixels,
+                              byte[] svgData) throws InvalidFormatException, IOException {
         // 容器限制宽度
         int containerWidth = context.getAvailableWidthInEMU();
 //        int containerHeight = context.getAvailablePageHeight();
@@ -258,7 +297,7 @@ public class ImageRenderer implements ElementRenderer {
         }
 
         context.renderPicture(inputStream, type, HtmlConstants.TAG_IMG,
-                widthInEMU, heightInEMU);
+                widthInEMU, heightInEMU, svgData);
     }
 
 }

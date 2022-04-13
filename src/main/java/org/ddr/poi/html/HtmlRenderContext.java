@@ -26,6 +26,8 @@ import org.apache.poi.xwpf.usermodel.BodyType;
 import org.apache.poi.xwpf.usermodel.IBody;
 import org.apache.poi.xwpf.usermodel.IBodyElement;
 import org.apache.poi.xwpf.usermodel.IRunBody;
+import org.apache.poi.xwpf.usermodel.SVGPictureData;
+import org.apache.poi.xwpf.usermodel.SVGRelation;
 import org.apache.poi.xwpf.usermodel.XWPFHyperlinkRun;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRelation;
@@ -46,6 +48,13 @@ import org.ddr.poi.html.util.RenderUtils;
 import org.ddr.poi.html.util.WhiteSpaceRule;
 import org.ddr.poi.util.XmlUtils;
 import org.jsoup.internal.StringUtil;
+import org.openxmlformats.schemas.drawingml.x2006.main.CTBlip;
+import org.openxmlformats.schemas.drawingml.x2006.main.CTGraphicalObjectFrameLocking;
+import org.openxmlformats.schemas.drawingml.x2006.main.CTNonVisualGraphicFrameProperties;
+import org.openxmlformats.schemas.drawingml.x2006.main.CTOfficeArtExtension;
+import org.openxmlformats.schemas.drawingml.x2006.main.CTOfficeArtExtensionList;
+import org.openxmlformats.schemas.drawingml.x2006.picture.CTPicture;
+import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.CTInline;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTColor;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDrawing;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTFonts;
@@ -889,18 +898,54 @@ public class HtmlRenderContext extends RenderContext<String> {
      * @param filename 文件名
      * @param width 宽度
      * @param height 高度
+     * @param svgData SVG数据
      */
-    public void renderPicture(InputStream pictureData, int pictureType, String filename, int width, int height)
+    public void renderPicture(InputStream pictureData, int pictureType, String filename, int width, int height, byte[] svgData)
             throws IOException, InvalidFormatException {
         CTR ctr = newRun();
 
         currentRun.addPicture(pictureData, pictureType, filename, width, height);
         CTR r = currentRun.getCTR();
+
+        CTDrawing drawing = null;
         if (r != ctr) {
             int lastDrawingIndex = r.sizeOfDrawingArray() - 1;
-            CTDrawing drawing = r.getDrawingArray(lastDrawingIndex);
+            drawing = r.getDrawingArray(lastDrawingIndex);
             ctr.setDrawingArray(new CTDrawing[]{drawing});
             r.removeDrawing(lastDrawingIndex);
+        } else if (svgData != null) {
+            drawing = ctr.getDrawingArray(ctr.sizeOfDrawingArray() - 1);
+        }
+
+        if (svgData != null) {
+            CTInline[] inlineArray = drawing.getInlineArray();
+            if (inlineArray.length > 0) {
+                CTInline ctInline = inlineArray[0];
+                String svgRelId = getXWPFDocument().addPictureData(svgData, SVGPictureData.PICTURE_TYPE_SVG);
+                CTNonVisualGraphicFrameProperties properties = ctInline.isSetCNvGraphicFramePr()
+                        ? ctInline.getCNvGraphicFramePr() : ctInline.addNewCNvGraphicFramePr();
+                CTGraphicalObjectFrameLocking frameLocking = properties.isSetGraphicFrameLocks()
+                        ? properties.getGraphicFrameLocks() : properties.addNewGraphicFrameLocks();
+                frameLocking.setNoChangeAspect(true);
+
+                XmlCursor xmlCursor = ctInline.getGraphic().getGraphicData().newCursor();
+                if (xmlCursor.toFirstChild()) {
+                    CTPicture ctPicture = (CTPicture) xmlCursor.getObject();
+                    CTBlip blip = ctPicture.getBlipFill().getBlip();
+                    if (blip != null) {
+                        CTOfficeArtExtensionList extList = blip.isSetExtLst() ? blip.getExtLst() : blip.addNewExtLst();
+                        CTOfficeArtExtension svgBitmap = extList.addNewExt();
+                        svgBitmap.setUri(SVGRelation.SVG_URI);
+                        XmlCursor cur = svgBitmap.newCursor();
+                        cur.toEndToken();
+                        cur.beginElement(SVGRelation.SVG_QNAME);
+                        cur.insertNamespace(SVGRelation.SVG_PREFIX, SVGRelation.MS_SVG_NS);
+                        cur.insertAttributeWithValue(SVGRelation.EMBED_TAG, svgRelId);
+                        cur.dispose();
+                    }
+                }
+                xmlCursor.dispose();
+            }
         }
     }
 
