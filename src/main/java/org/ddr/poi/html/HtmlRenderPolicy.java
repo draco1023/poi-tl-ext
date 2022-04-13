@@ -46,6 +46,7 @@ import org.ddr.poi.html.tag.OmittedRenderer;
 import org.ddr.poi.html.tag.SmallRenderer;
 import org.ddr.poi.html.tag.SubscriptRenderer;
 import org.ddr.poi.html.tag.SuperscriptRenderer;
+import org.ddr.poi.html.tag.SvgRenderer;
 import org.ddr.poi.html.tag.TableCellRenderer;
 import org.ddr.poi.html.tag.TableRenderer;
 import org.ddr.poi.html.tag.UnderlineRenderer;
@@ -117,6 +118,7 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
                 new SmallRenderer(),
                 new SubscriptRenderer(),
                 new SuperscriptRenderer(),
+                new SvgRenderer(),
                 new TableCellRenderer(),
                 new TableRenderer(),
                 new UnderlineRenderer(),
@@ -152,6 +154,7 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
     public void doRender(RenderContext<String> context) throws Exception {
         String html = FORMATTED_PATTERN.matcher(context.getData()).replaceAll(FORMATTED_REPLACEMENT);
         Document document = Jsoup.parseBodyFragment(html);
+        document.outputSettings().prettyPrint(false).indentAmount(0);
 
         HtmlRenderContext htmlRenderContext = new HtmlRenderContext(context);
         htmlRenderContext.setGlobalFont(config.getGlobalFont());
