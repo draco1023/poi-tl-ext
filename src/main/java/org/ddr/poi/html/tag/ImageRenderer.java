@@ -20,7 +20,6 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
-import org.apache.poi.common.usermodel.PictureType;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.util.Units;
 import org.apache.poi.xwpf.usermodel.Document;
@@ -186,7 +185,7 @@ public class ImageRenderer implements ElementRenderer {
         try {
             connect = HttpURLConnectionUtils.connect(src);
             InputStream urlStream = connect.getInputStream();
-            boolean svg = connect.getHeaderField("content-type").contains(PictureType.SVG.contentType);
+            boolean svg = connect.getHeaderField("content-type").contains(HtmlConstants.TAG_SVG);
             byte[] svgData = null;
             if (svg) {
                 outputStream = new ByteArrayCopyStream(urlStream.available());
