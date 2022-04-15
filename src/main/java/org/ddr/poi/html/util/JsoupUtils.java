@@ -17,12 +17,16 @@
 package org.ddr.poi.html.util;
 
 import org.ddr.poi.html.HtmlConstants;
+import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
+import org.jsoup.parser.CustomHtmlTreeBuilder;
+import org.jsoup.parser.Parser;
 import org.jsoup.select.Elements;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -118,5 +122,32 @@ public class JsoupUtils {
             }
         }
         return elements;
+    }
+
+    /**
+     * @see org.jsoup.Jsoup#parseBodyFragment(String)
+     * @see org.jsoup.parser.Parser#parseBodyFragment(String, String)
+     */
+    public static Document parseBodyFragment(String bodyHtml) {
+        String baseUri = "";
+        Document doc = Document.createShell(baseUri);
+        Element body = doc.body();
+        List<Node> nodeList = parseFragment(bodyHtml, body, baseUri);
+        Node[] nodes = nodeList.toArray(new Node[0]); // the node list gets modified when re-parented
+        for (int i = nodes.length - 1; i > 0; i--) {
+            nodes[i].remove();
+        }
+        for (Node node : nodes) {
+            body.appendChild(node);
+        }
+        return doc;
+    }
+
+    /**
+     * @see org.jsoup.parser.Parser#parseFragment(String, Element, String)
+     */
+    public static List<Node> parseFragment(String fragmentHtml, Element context, String baseUri) {
+        CustomHtmlTreeBuilder treeBuilder = new CustomHtmlTreeBuilder();
+        return treeBuilder.parseFragment(fragmentHtml, context, baseUri, new Parser(treeBuilder));
     }
 }
