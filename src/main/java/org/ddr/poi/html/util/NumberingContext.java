@@ -46,7 +46,7 @@ public class NumberingContext {
     /**
      * 每级缩进
      */
-    private static final int INDENT = 360;
+    private int indent = 360;
     private final XWPFDocument document;
     private int nextAbstractNumberId;
     private int nextNumberingLevel;
@@ -116,6 +116,15 @@ public class NumberingContext {
     }
 
     /**
+     * Setter for indentation.
+     *
+     * @param indentation New indentation value
+     */
+    public void setIndentation(int indentation) {
+        this.indent = indentation;
+    }
+
+    /**
      * 获取列表ID
      *
      * @param key Key
@@ -143,7 +152,7 @@ public class NumberingContext {
                         ListStyleType listStyleType = numberFormats.get(i);
                         CTLvl cTLvl = ctAbstractNum.addNewLvl();
                         CTInd ind = cTLvl.addNewPPr().addNewInd();
-                        ind.setLeft(BigInteger.valueOf(INDENT * i));
+                        ind.setLeft(BigInteger.valueOf((long) indent * i));
 
                         cTLvl.addNewNumFmt().setVal(listStyleType.getFormat());
                         cTLvl.addNewLvlText().setVal(getLevelText(listStyleType, i));
