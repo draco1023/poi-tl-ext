@@ -33,6 +33,8 @@ public class HtmlRenderConfig {
     private boolean showDefaultTableBorderInTableCell;
     private List<ElementRenderer> customRenderers;
 
+    private Integer numberingIndent;
+
     /**
      * @return global font family
      */
@@ -80,5 +82,16 @@ public class HtmlRenderConfig {
 
     public void setCustomRenderers(List<ElementRenderer> customRenderers) {
         this.customRenderers = customRenderers;
+    }
+
+    /**
+     * @return custom numbering indent
+     */
+    public Integer getNumberingIndent() {
+        return numberingIndent;
+    }
+
+    public void setNumberingIndent(Integer numberingIndent) {
+        this.numberingIndent = numberingIndent;
     }
 }
