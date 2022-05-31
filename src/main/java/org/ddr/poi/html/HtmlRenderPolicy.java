@@ -162,6 +162,7 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
             htmlRenderContext.setGlobalFontSize(BigInteger.valueOf(config.getGlobalFontSizeInHalfPoints()));
         }
         htmlRenderContext.getNumberingContext().setIndent(config.getNumberingIndent());
+        htmlRenderContext.getNumberingContext().setSpacing(config.getNumberingSpacing());
 
         for (Node node : document.body().childNodes()) {
             renderNode(node, htmlRenderContext);

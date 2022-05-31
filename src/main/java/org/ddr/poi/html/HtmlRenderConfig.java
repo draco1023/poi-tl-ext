@@ -17,6 +17,7 @@
 package org.ddr.poi.html;
 
 import org.ddr.poi.html.util.CSSLength;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STLevelSuffix;
 
 import java.util.List;
 
@@ -33,7 +34,8 @@ public class HtmlRenderConfig {
     private boolean showDefaultTableBorderInTableCell;
     private List<ElementRenderer> customRenderers;
 
-    private Integer numberingIndent;
+    private int numberingIndent = -1;
+    private STLevelSuffix.Enum numberingSpacing;
 
     /**
      * @return global font family
@@ -87,11 +89,22 @@ public class HtmlRenderConfig {
     /**
      * @return custom numbering indent
      */
-    public Integer getNumberingIndent() {
+    public int getNumberingIndent() {
         return numberingIndent;
     }
 
-    public void setNumberingIndent(Integer numberingIndent) {
+    public void setNumberingIndent(int numberingIndent) {
         this.numberingIndent = numberingIndent;
+    }
+
+    /**
+     * @return custom numbering spacing
+     */
+    public STLevelSuffix.Enum getNumberingSpacing() {
+        return numberingSpacing;
+    }
+
+    public void setNumberingSpacing(STLevelSuffix.Enum numberingSpacing) {
+        this.numberingSpacing = numberingSpacing;
     }
 }
