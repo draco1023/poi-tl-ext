@@ -27,6 +27,7 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTInd;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTLvl;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STHint;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STJc;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STLevelSuffix;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STMultiLevelType;
 
 import java.math.BigInteger;
@@ -49,6 +50,7 @@ public class NumberingContext {
     private static final int INDENT = 360;
     private final XWPFDocument document;
     private int indent = INDENT;
+    private STLevelSuffix.Enum spacing;
     private int nextAbstractNumberId;
     private int nextNumberingLevel;
 
@@ -157,6 +159,9 @@ public class NumberingContext {
                             ctFonts.setHAnsi(listStyleType.getFont());
                             ctFonts.setHint(STHint.DEFAULT);
                         }
+                        if (spacing != null) {
+                            cTLvl.addNewSuff().setVal(spacing);
+                        }
                     }
 
                     numbering.addAbstractNum(new XWPFAbstractNum(ctAbstractNum, numbering));
@@ -198,9 +203,14 @@ public class NumberingContext {
         return sb.toString();
     }
 
-    public void setIndent(Integer indent) {
-        if (indent != null && indent > 0) {
+    public void setIndent(int indent) {
+        if (indent >= 0) {
             this.indent = indent;
         }
     }
+
+    public void setSpacing(STLevelSuffix.Enum spacing) {
+        this.spacing = spacing;
+    }
+
 }

@@ -9,7 +9,7 @@ poi 4.x poi-tl 1.11 以前的版本
 <dependency>
     <groupId>io.github.draco1023</groupId>
     <artifactId>poi-tl-ext</artifactId>
-    <version>0.3.15</version>
+    <version>0.3.16</version>
 </dependency>
 ```
 
@@ -19,7 +19,7 @@ poi 5.x poi-tl 1.11.0+
 <dependency>
     <groupId>io.github.draco1023</groupId>
     <artifactId>poi-tl-ext</artifactId>
-    <version>0.3.15-beta</version>
+    <version>0.3.16-beta</version>
 </dependency>
 ```
 
@@ -43,7 +43,8 @@ poi 5.x poi-tl 1.11.0+
   - `globalFont` 全局默认字体
   - `globalFontSize` 全局默认字号
   - `showDefaultTableBorderInTableCell` 是否显示嵌套表格的边框（`poi`生成嵌套表格时默认不显示边框，见#12）
-  - `numberingIndent` 列表项缩进长度，默认值360
+  - `numberingIndent` 多级列表项缩进长度，默认值360
+  - `numberingSpacing` 列表编号与内容之间的间隔类型，`STLevelSuffix.NOTHING`/`STLevelSuffix.SPACE`/`STLevelSuffix.TAB`
   
   _目前实现了富文本编辑器可实现的大部分效果，后续继续改进..._
 
