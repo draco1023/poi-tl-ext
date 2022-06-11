@@ -199,6 +199,9 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
         boolean blocked = false;
 
         if (element.isBlock() && (elementRenderer == null || elementRenderer.renderAsBlock())) {
+            if (element.childNodeSize() == 0 && !HtmlConstants.KEEP_EMPTY_TAGS.contains(element.normalName())) {
+                return;
+            }
             if (!context.isBlocked()) {
                 // 复制段落中占位符之前的部分内容
                 moveContentToNewPrevParagraph(context);
@@ -235,7 +238,7 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
                 }
 
                 RenderUtils.tableStyle(context, xwpfTable, cssStyleDeclaration);
-            } else {
+            } else if (shouldNewParagraph(element)) {
                 XWPFParagraph xwpfParagraph = context.newParagraph(container, xmlCursor);
                 xmlCursor.dispose();
                 if (xwpfParagraph == null) {
@@ -259,6 +262,15 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
         }
 
         renderElementEnd(element, context, elementRenderer, blocked);
+    }
+
+    private boolean shouldNewParagraph(Element element) {
+        // li的第一个子节点如果为块状元素，避免生成新的段落
+        if (element.hasParent() && HtmlConstants.TAG_LI.equals(element.parent().normalName())
+                && element.parentNode().childNode(0) == element) {
+            return false;
+        }
+        return true;
     }
 
     private XmlCursor getElementCursor(HtmlRenderContext context, IBody container, boolean isTableTag) {

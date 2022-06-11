@@ -252,6 +252,11 @@ public interface HtmlConstants {
     Set<String> BORDER_STYLES = Sets.newHashSet(NONE, HIDDEN, DOTTED, DASHED, SOLID, DOUBLE, GROOVE, RIDGE, INSET, OUTSET);
 
     /**
+     * 需要保留的空标签
+     */
+    Set<String> KEEP_EMPTY_TAGS = Sets.newHashSet(TAG_LI, TAG_HR);
+
+    /**
      * Word中一些主要的默认字体
      */
     Set<String> MAJOR_FONT = Sets.newHashSet("宋体", "SIMSUN", "新細明體", "TIMES NEW ROMAN", "ARIAL");
