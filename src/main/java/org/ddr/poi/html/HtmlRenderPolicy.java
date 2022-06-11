@@ -41,6 +41,7 @@ import org.ddr.poi.html.tag.ImageRenderer;
 import org.ddr.poi.html.tag.ItalicRenderer;
 import org.ddr.poi.html.tag.ListItemRenderer;
 import org.ddr.poi.html.tag.ListRenderer;
+import org.ddr.poi.html.tag.MarkRenderer;
 import org.ddr.poi.html.tag.MathRenderer;
 import org.ddr.poi.html.tag.OmittedRenderer;
 import org.ddr.poi.html.tag.SmallRenderer;
@@ -113,6 +114,7 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
                 new ItalicRenderer(),
                 new ListItemRenderer(),
                 new ListRenderer(),
+                new MarkRenderer(),
                 new MathRenderer(),
                 new OmittedRenderer(),
                 new SmallRenderer(),
