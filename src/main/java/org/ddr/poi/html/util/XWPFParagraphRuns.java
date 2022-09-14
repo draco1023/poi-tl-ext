@@ -46,7 +46,14 @@ public class XWPFParagraphRuns {
      * @param pos index of run
      */
     public void remove(int pos) {
-        runs.remove(pos);
-        iruns.remove(pos);
+        XWPFRun run = runs.remove(pos);
+        iruns.remove(run);
+    }
+
+    /**
+     * @return runs count
+     */
+    public int runCount() {
+        return runs.size();
     }
 }

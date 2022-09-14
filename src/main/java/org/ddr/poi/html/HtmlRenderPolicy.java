@@ -62,6 +62,7 @@ import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
 import org.jsoup.nodes.TextNode;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBookmark;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTMarkupRange;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTP;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
@@ -73,12 +74,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -334,7 +332,11 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
         XmlCursor rCursor = ctr.newCursor();
         boolean hasPrevSibling = false;
         while (rCursor.toPrevSibling()) {
-            if (!(rCursor.getObject() instanceof CTPPr)) {
+            XmlObject object = rCursor.getObject();
+            if (object instanceof CTMarkupRange) {
+                continue;
+            }
+            if (!(object instanceof CTPPr)) {
                 hasPrevSibling = true;
                 break;
             }
@@ -346,7 +348,6 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
         rCursor.toParent();
         rCursor.push();
         CTP ctp = ((CTP) rCursor.getObject());
-        List<CTR> rList = new ArrayList<>(ctp.getRList());
         XWPFParagraph paragraph = context.getContainer().getParagraph(ctp);
         XWPFParagraph newParagraph = context.getContainer().insertNewParagraph(rCursor);
         XmlCursor pCursor = newParagraph.getCTP().newCursor();
@@ -368,16 +369,10 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
         rCursor.dispose();
         pCursor.dispose();
 
-        Set<CTR> rSet = new HashSet<>(ctp.getRList());
-        if (rList.size() != rSet.size()) {
-            XWPFParagraphRuns runs = new XWPFParagraphRuns(paragraph);
+        XWPFParagraphRuns runs = new XWPFParagraphRuns(paragraph);
 
-            for (int i = rList.size() - 1; i >= 0; i--) {
-                CTR r = rList.get(i);
-                if (!rSet.contains(r)) {
-                    runs.remove(i);
-                }
-            }
+        for (int i = runs.runCount() - ctp.getRList().size() - 1; i >= 0; i--) {
+            runs.remove(i);
         }
     }
 
