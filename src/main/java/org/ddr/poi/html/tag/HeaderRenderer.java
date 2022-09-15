@@ -20,7 +20,12 @@ import org.ddr.poi.html.ElementRenderer;
 import org.ddr.poi.html.HtmlConstants;
 import org.ddr.poi.html.HtmlRenderContext;
 import org.ddr.poi.html.util.CSSStyleUtils;
+import org.ddr.poi.html.util.RenderUtils;
 import org.jsoup.nodes.Element;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDecimalNumber;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTP;
+
+import java.math.BigInteger;
 
 /**
  * h1~h6标签渲染器
@@ -51,6 +56,11 @@ public class HeaderRenderer implements ElementRenderer {
         int index = Integer.parseInt(element.normalName().substring(1)) - 1;
         String fontSizeStyle = HtmlConstants.inlineStyle(HtmlConstants.CSS_FONT_SIZE, FONT_SIZES[index]);
         context.pushInlineStyle(CSSStyleUtils.parse(HtmlConstants.DEFINED_BOLD + fontSizeStyle), element.isBlock());
+
+        CTP ctp = context.getClosestParagraph().getCTP();
+        CTDecimalNumber ctDecimalNumber = CTDecimalNumber.Factory.newInstance();
+        ctDecimalNumber.setVal(BigInteger.valueOf(index));
+        RenderUtils.getPPr(ctp).setOutlineLvl(ctDecimalNumber);
         return true;
     }
 
