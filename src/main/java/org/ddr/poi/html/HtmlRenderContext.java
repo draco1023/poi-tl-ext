@@ -244,7 +244,7 @@ public class HtmlRenderContext extends RenderContext<String> {
             newCTStyle.setRPr(run.getCTR().getRPr());
             XmlUtils.removeNamespaces(newCTStyle.getRPr());
 
-            String newStyleId = styleId + getXWPFDocument().getStyles().getNumberOfStyles();
+            String newStyleId = styleId + styles.getNumberOfStyles();
             newCTStyle.setStyleId(newStyleId);
             newCTStyle.addNewName().setVal(newStyleId);
             placeholderStyleId = newStyleId;
