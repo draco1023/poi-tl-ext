@@ -125,6 +125,7 @@ public interface HtmlConstants {
     String CSS_FONT_SIZE = "font-size";
     String CSS_LINE_HEIGHT = "line-height";
     String CSS_FONT_FAMILY = "font-family";
+    String CSS_TEXT_DECORATION = "text-decoration";
     String CSS_TEXT_DECORATION_LINE = "text-decoration-line";
     String CSS_TEXT_DECORATION_STYLE = "text-decoration-style";
     String CSS_TEXT_DECORATION_COLOR = "text-decoration-color";
@@ -252,6 +253,9 @@ public interface HtmlConstants {
     Set<String> FONT_VARIANTS = Sets.newHashSet(NORMAL, SMALL_CAPS);
     Set<String> FONT_WEIGHTS = Sets.newHashSet(NORMAL, BOLD, BOLDER, LIGHTER);
     Set<String> BORDER_STYLES = Sets.newHashSet(NONE, HIDDEN, DOTTED, DASHED, SOLID, DOUBLE, GROOVE, RIDGE, INSET, OUTSET);
+    // 不支持overline
+    Set<String> TEXT_DECORATION_LINES = Sets.newHashSet(UNDERLINE, LINE_THROUGH);
+    Set<String> TEXT_DECORATION_STYLES = Sets.newHashSet(SOLID, DOUBLE, DOTTED, DASHED, WAVY);
 
     /**
      * 需要保留的空标签

@@ -142,6 +142,9 @@ public class CSSStyleUtils {
                     case HtmlConstants.CSS_LIST_STYLE:
                         splitListStyle(valueList, length, style, i);
                         break;
+                    case HtmlConstants.CSS_TEXT_DECORATION:
+                        splitTextDecoration(valueList, length, style, i);
+                        break;
                 }
             }
         }
@@ -322,6 +325,38 @@ public class CSSStyleUtils {
                 break;
             default:
                 style.getProperties().add(i, new Property(HtmlConstants.CSS_LIST_STYLE_TYPE, valueList.item(0), false));
+        }
+    }
+
+    private static void splitTextDecoration(CSSValueImpl valueList, int length, CSSStyleDeclarationImpl style, int i) {
+        if (length == 0) {
+            style.getProperties().add(i, new Property(HtmlConstants.CSS_TEXT_DECORATION_LINE, valueList, false));
+            return;
+        }
+
+        StringBuilder lines = new StringBuilder(22);
+        for (int j = 0; j < length; j++) {
+            CSSValue item = valueList.item(j);
+            String value = item.getCssText();
+            String lowerCase = value.toLowerCase();
+            if (HtmlConstants.NONE.equals(lowerCase)) {
+                style.getProperties().add(i, new Property(HtmlConstants.CSS_TEXT_DECORATION_LINE, item, false));
+                break;
+            }
+            if (HtmlConstants.TEXT_DECORATION_LINES.contains(lowerCase)) {
+                if (lines.length() > 0) {
+                    lines.append(' ');
+                }
+                lines.append(lowerCase);
+            } else if (HtmlConstants.TEXT_DECORATION_STYLES.contains(lowerCase)) {
+                style.getProperties().add(i, new Property(HtmlConstants.CSS_TEXT_DECORATION_STYLE, item, false));
+            } else if (Colors.maybe(lowerCase)) {
+                style.getProperties().add(i, new Property(HtmlConstants.CSS_TEXT_DECORATION_COLOR, item, false));
+            }
+        }
+
+        if (lines.length() > 0) {
+            style.getProperties().add(i, newProperty(HtmlConstants.CSS_TEXT_DECORATION_LINE, lines.toString()));
         }
     }
 }
