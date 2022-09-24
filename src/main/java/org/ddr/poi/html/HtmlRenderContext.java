@@ -859,17 +859,21 @@ public class HtmlRenderContext extends RenderContext<String> {
 
         // 中划线/下划线
         String textDecoration = getPropertyValue(HtmlConstants.CSS_TEXT_DECORATION_LINE);
-        if (StringUtils.contains(textDecoration, HtmlConstants.LINE_THROUGH)) {
-            rPr.addNewStrike();
-        }
-        if (StringUtils.contains(textDecoration, HtmlConstants.UNDERLINE)) {
-            CTUnderline ctUnderline = RenderUtils.getUnderline(rPr);
-            String textDecorationStyle = getPropertyValue(HtmlConstants.CSS_TEXT_DECORATION_STYLE);
-            ctUnderline.setVal(RenderUtils.underline(textDecorationStyle));
-            String textDecorationColor = getPropertyValue(HtmlConstants.CSS_TEXT_DECORATION_COLOR);
-            if (StringUtils.isNotBlank(textDecorationColor)) {
-                String hex = Colors.fromStyle(textDecorationColor);
-                ctUnderline.setColor(hex);
+        if (HtmlConstants.NONE.equals(textDecoration)) {
+            RenderUtils.getUnderline(rPr).setVal(STUnderline.NONE);
+        } else {
+            if (StringUtils.contains(textDecoration, HtmlConstants.LINE_THROUGH)) {
+                rPr.addNewStrike();
+            }
+            if (StringUtils.contains(textDecoration, HtmlConstants.UNDERLINE)) {
+                CTUnderline ctUnderline = RenderUtils.getUnderline(rPr);
+                String textDecorationStyle = getPropertyValue(HtmlConstants.CSS_TEXT_DECORATION_STYLE);
+                ctUnderline.setVal(RenderUtils.underline(textDecorationStyle));
+                String textDecorationColor = getPropertyValue(HtmlConstants.CSS_TEXT_DECORATION_COLOR);
+                if (StringUtils.isNotBlank(textDecorationColor)) {
+                    String hex = Colors.fromStyle(textDecorationColor);
+                    ctUnderline.setColor(hex);
+                }
             }
         }
 

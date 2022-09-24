@@ -350,4 +350,17 @@ public class Colors {
     private static void warn(String style) {
         log.warn("Illegal color: {}", style);
     }
+
+    /**
+     * 判断样式值是否可能为颜色
+     *
+     * @param style 样式值
+     * @return 是否可能为颜色
+     */
+    public static boolean maybe(String style) {
+        return style.startsWith(HtmlConstants.SHARP)
+                || style.startsWith("rgb")
+                || style.startsWith("hsl")
+                || COLOR_MAP.containsKey(style);
+    }
 }
