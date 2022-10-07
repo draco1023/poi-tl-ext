@@ -84,6 +84,9 @@ public interface HtmlConstants {
     String TAG_TEMPLATE = "template";
 
     String TAG_SVG = "svg";
+    String TAG_RUBY = "ruby";
+    String TAG_RP = "rp";
+    String TAG_RT = "rt";
 
     String ATTR_STYLE = "style";
     String ATTR_SRC = "src";

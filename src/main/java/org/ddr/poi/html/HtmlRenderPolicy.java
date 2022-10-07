@@ -44,6 +44,7 @@ import org.ddr.poi.html.tag.ListRenderer;
 import org.ddr.poi.html.tag.MarkRenderer;
 import org.ddr.poi.html.tag.MathRenderer;
 import org.ddr.poi.html.tag.OmittedRenderer;
+import org.ddr.poi.html.tag.RubyRenderer;
 import org.ddr.poi.html.tag.SmallRenderer;
 import org.ddr.poi.html.tag.SubscriptRenderer;
 import org.ddr.poi.html.tag.SuperscriptRenderer;
@@ -120,6 +121,7 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
                 new MarkRenderer(),
                 new MathRenderer(),
                 new OmittedRenderer(),
+                new RubyRenderer(),
                 new SmallRenderer(),
                 new SubscriptRenderer(),
                 new SuperscriptRenderer(),
