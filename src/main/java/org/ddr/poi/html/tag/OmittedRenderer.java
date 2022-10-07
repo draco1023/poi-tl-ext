@@ -39,6 +39,7 @@ public class OmittedRenderer implements ElementRenderer {
             HtmlConstants.TAG_COLGROUP,
             HtmlConstants.TAG_COL,
             HtmlConstants.TAG_TEMPLATE,
+            HtmlConstants.TAG_RP,
     };
 
     /**
