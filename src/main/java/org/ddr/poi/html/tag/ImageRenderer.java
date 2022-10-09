@@ -285,14 +285,14 @@ public class ImageRenderer implements ElementRenderer {
         String maxHeight = context.getPropertyValue(HtmlConstants.CSS_MAX_HEIGHT);
         heightInEMU = context.computeLengthInEMU(height, maxHeight, heightInEMU, Integer.MAX_VALUE);
 
-        // 如果只声明了宽或高，则同比计算对应尺寸
-        if (declaredWidth && !declaredHeight) {
-            heightInEMU = heightInPixels * widthInEMU / widthInPixels;
-        } else if (!declaredWidth && declaredHeight) {
-            widthInEMU = widthInPixels * heightInEMU / heightInPixels;
+        // 除非同时声明了宽和高，否则同比计算对应尺寸
+        if (!declaredHeight) {
+            heightInEMU = (int) (heightInPixels * (long) widthInEMU / widthInPixels);
+        } else if (!declaredWidth) {
+            widthInEMU = (int) (widthInPixels * (long) heightInEMU / heightInPixels);
             if (widthInEMU > containerWidth) {
                 widthInEMU = containerWidth;
-                heightInEMU = heightInPixels * widthInEMU / widthInPixels;
+                heightInEMU = (int) (heightInPixels * (long) widthInEMU / widthInPixels);
             }
         }
 
