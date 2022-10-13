@@ -18,6 +18,8 @@ package org.ddr.poi.html.tag;
 
 import com.steadystate.css.dom.CSSStyleDeclarationImpl;
 import org.apache.commons.lang3.math.NumberUtils;
+import org.apache.poi.xwpf.usermodel.BodyElementType;
+import org.apache.poi.xwpf.usermodel.IBodyElement;
 import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
@@ -80,6 +82,30 @@ public class TableCellRenderer implements ElementRenderer {
                 paragraphs.remove(0);
             }
             xmlCursor.dispose();
+        }
+
+        // 保证单元格的最后一个子元素为段落
+        List<IBodyElement> bodyElements = context.getContainer().getBodyElements();
+        if (!bodyElements.isEmpty()) {
+            IBodyElement bodyElement = bodyElements.get(bodyElements.size() - 1);
+            if (bodyElement.getElementType() == BodyElementType.TABLE) {
+                XWPFTable table = (XWPFTable) bodyElement;
+                XWPFTableCell parentCell = (XWPFTableCell) context.getContainer();
+                XmlCursor xmlCursor = parentCell.getCTTc().newCursor();
+                xmlCursor.toLastChild();
+                while (true) {
+                    if (xmlCursor.getObject() == table.getCTTbl()) {
+                        xmlCursor.toEndToken();
+                        xmlCursor.toNextToken();
+                        parentCell.insertNewParagraph(xmlCursor);
+                        break;
+                    }
+                    if (!xmlCursor.toPrevSibling()) {
+                        break;
+                    }
+                }
+                xmlCursor.dispose();
+            }
         }
 
         ParagraphAlignment alignment = RenderUtils.align(context.currentElementStyle().getTextAlign());
