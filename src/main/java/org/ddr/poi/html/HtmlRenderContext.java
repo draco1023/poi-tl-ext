@@ -64,10 +64,12 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTRPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTShd;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTStyle;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTText;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTUnderline;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STOnOff;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STShd;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STStyleType;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STThemeColor;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STUnderline;
@@ -844,7 +846,6 @@ public class HtmlRenderContext extends RenderContext<String> {
             rPr.addNewI();
         }
 
-        // FIXME cssparser目前不支持以空格为分隔符的rgb颜色，仅支持逗号分隔符
         // 颜色
         String color = getPropertyValue(HtmlConstants.CSS_COLOR);
         if (StringUtils.isNotBlank(color)) {
@@ -886,6 +887,17 @@ public class HtmlRenderContext extends RenderContext<String> {
         }
 
         // FIXME 段落边框与行内边框分离，行内只有全边框，段落分四边
+
+        // 背景色
+        String backgroundColor = getPropertyValue(HtmlConstants.CSS_BACKGROUND_COLOR, true);
+        if (StringUtils.isNotBlank(backgroundColor)) {
+            String hex = Colors.fromStyle(backgroundColor, null);
+            if (hex != null) {
+                CTShd ctShd = rPr.addNewShd();
+                ctShd.setFill(hex);
+                ctShd.setVal(STShd.CLEAR);
+            }
+        }
 
         // 可见性
         String visibility = getPropertyValue(HtmlConstants.CSS_VISIBILITY);
