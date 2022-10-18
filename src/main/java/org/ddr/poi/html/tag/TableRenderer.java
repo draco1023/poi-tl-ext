@@ -17,6 +17,7 @@
 package org.ddr.poi.html.tag;
 
 import com.steadystate.css.dom.CSSStyleDeclarationImpl;
+import com.steadystate.css.dom.Property;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.poi.util.Units;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
@@ -46,8 +47,11 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.STMerge;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STTblWidth;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -84,9 +88,18 @@ public class TableRenderer implements ElementRenderer {
 //        Element caption = JsoupUtils.firstChild(element, HtmlConstants.TAG_CAPTION);
 
         Element colgroup = JsoupUtils.firstChild(element, HtmlConstants.TAG_COLGROUP);
+        List<CSSStyleDeclarationImpl> columnStyles = Collections.emptyList();
         if (colgroup != null) {
             Elements cols = colgroup.select(HtmlConstants.TAG_COL);
-            // FIXME col可以拥有style
+            columnStyles = new ArrayList<>();
+            for (Element col : cols) {
+                String style = col.attr(HtmlConstants.ATTR_STYLE);
+                CSSStyleDeclarationImpl cssStyleDeclaration = CSSStyleUtils.parse(style);
+                int span = NumberUtils.toInt(col.attr(HtmlConstants.ATTR_SPAN), 1);
+                for (int i = 0; i < span; i++) {
+                    columnStyles.add(cssStyleDeclaration);
+                }
+            }
             colgroup.remove();
         }
         Elements trs = JsoupUtils.childRows(element);
@@ -149,6 +162,15 @@ public class TableRenderer implements ElementRenderer {
                 } else {
                     spanWidths.add(new SpanWidth(tdWidth, columnIndex, colspan, explicitWidth));
                     ctTcPr.addNewGridSpan().setVal(BigInteger.valueOf(colspan));
+                }
+
+                // 列定义的样式与单元格的样式合并
+                if (!columnStyles.isEmpty() && columnIndex < columnStyles.size()) {
+                    List<Property> properties = columnStyles.get(columnIndex).getProperties();
+                    if (!properties.isEmpty()) {
+                        tdStyleDeclaration.getProperties().addAll(0, properties);
+                        td.attr(HtmlConstants.ATTR_STYLE, tdStyleDeclaration.getCssText());
+                    }
                 }
 
                 columnIndex += colspan;
