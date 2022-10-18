@@ -92,6 +92,7 @@ public interface HtmlConstants {
     String ATTR_SRC = "src";
     String ATTR_WIDTH = "width";
     String ATTR_HEIGHT = "height";
+    String ATTR_SPAN = "span";
     String ATTR_ROWSPAN = "rowspan";
     String ATTR_COLSPAN = "colspan";
     String ATTR_HREF = "href";
