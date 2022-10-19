@@ -36,9 +36,11 @@ import org.ddr.poi.html.util.SpanWidth;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTRow;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTString;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTbl;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblGrid;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblGridCol;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblWidth;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTc;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcPr;
@@ -77,6 +79,7 @@ public class TableRenderer implements ElementRenderer {
         String widthDeclaration = styleDeclaration.getWidth();
 
         XWPFTable table = context.getClosestTable();
+        CTTbl ctTbl = table.getCTTbl();
         int containerWidth = context.getAvailableWidthInEMU();
 
         CSSLength width = CSSLength.of(widthDeclaration);
@@ -84,8 +87,12 @@ public class TableRenderer implements ElementRenderer {
         int tableWidth = context.computeLengthInEMU(widthDeclaration, styleDeclaration.getMaxWidth(), containerWidth, containerWidth);
         int originWidth = !width.isValid() || width.isPercent() ? tableWidth : context.lengthToEMU(width);
 
-        // FIXME poi不支持设置tblCaption
-//        Element caption = JsoupUtils.firstChild(element, HtmlConstants.TAG_CAPTION);
+        Element caption = JsoupUtils.firstChild(element, HtmlConstants.TAG_CAPTION);
+        if (caption != null) {
+            CTTblPr tblPr = RenderUtils.getTblPr(table.getCTTbl());
+            CTString tblCaption = tblPr.isSetTblCaption() ? tblPr.getTblCaption() : tblPr.addNewTblCaption();
+            tblCaption.setVal(caption.text());
+        }
 
         Element colgroup = JsoupUtils.firstChild(element, HtmlConstants.TAG_COLGROUP);
         List<CSSStyleDeclarationImpl> columnStyles = Collections.emptyList();
@@ -190,7 +197,6 @@ public class TableRenderer implements ElementRenderer {
             }
         }
 
-        CTTbl ctTbl = table.getCTTbl();
         CTTblGrid tblGrid = ctTbl.getTblGrid();
         if (tblGrid == null) {
             tblGrid = ctTbl.addNewTblGrid();
