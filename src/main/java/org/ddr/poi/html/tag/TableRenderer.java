@@ -20,9 +20,11 @@ import com.steadystate.css.dom.CSSStyleDeclarationImpl;
 import com.steadystate.css.dom.Property;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.poi.util.Units;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
+import org.apache.xmlbeans.XmlCursor;
 import org.ddr.poi.html.ElementRenderer;
 import org.ddr.poi.html.HtmlConstants;
 import org.ddr.poi.html.HtmlRenderContext;
@@ -34,6 +36,7 @@ import org.ddr.poi.html.util.RenderUtils;
 import org.ddr.poi.html.util.Span;
 import org.ddr.poi.html.util.SpanWidth;
 import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Node;
 import org.jsoup.select.Elements;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTRow;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTbl;
@@ -64,6 +67,18 @@ import java.util.TreeMap;
 public class TableRenderer implements ElementRenderer {
     private static final String[] TAGS = {HtmlConstants.TAG_TABLE};
 
+    private static final CSSStyleDeclarationImpl DEFAULT_STYLE = new CSSStyleDeclarationImpl();
+
+    public TableRenderer() {
+        DEFAULT_STYLE.setBackgroundColor("");
+        DEFAULT_STYLE.setBorder("");
+        DEFAULT_STYLE.setPadding("");
+        DEFAULT_STYLE.setMargin("");
+        DEFAULT_STYLE.setTextAlign(HtmlConstants.CENTER);
+
+        CSSStyleUtils.split(DEFAULT_STYLE);
+    }
+
     /**
      * 开始渲染
      *
@@ -84,8 +99,33 @@ public class TableRenderer implements ElementRenderer {
         int tableWidth = context.computeLengthInEMU(widthDeclaration, styleDeclaration.getMaxWidth(), containerWidth, containerWidth);
         int originWidth = !width.isValid() || width.isPercent() ? tableWidth : context.lengthToEMU(width);
 
-        // FIXME poi不支持设置tblCaption
-//        Element caption = JsoupUtils.firstChild(element, HtmlConstants.TAG_CAPTION);
+        Element caption = JsoupUtils.firstChild(element, HtmlConstants.TAG_CAPTION);
+        if (caption != null) {
+            CSSStyleDeclarationImpl captionStyle = context.getCssStyleDeclaration(caption);
+            if (CSSStyleUtils.EMPTY_STYLE == captionStyle) {
+                captionStyle = DEFAULT_STYLE;
+            } else {
+                captionStyle.getProperties().addAll(0, DEFAULT_STYLE.getProperties());
+            }
+            context.pushInlineStyle(captionStyle, caption.isBlock());
+            XWPFParagraph captionParagraph;
+            if (!HtmlConstants.BOTTOM.equals(captionStyle.getCaptionSide())) {
+                // 表格上方添加标题
+                XmlCursor xmlCursor = table.getCTTbl().newCursor();
+                captionParagraph = context.newParagraph(null, xmlCursor);
+                xmlCursor.dispose();
+                context.replaceClosestBody(captionParagraph);
+            } else {
+                captionParagraph = context.getClosestParagraph();
+            }
+            RenderUtils.paragraphStyle(context, captionParagraph, captionStyle);
+
+            for (Node node : caption.childNodes()) {
+                context.renderNode(node);
+            }
+            context.replaceClosestBody(table);
+            caption.remove();
+        }
 
         Element colgroup = JsoupUtils.firstChild(element, HtmlConstants.TAG_COLGROUP);
         List<CSSStyleDeclarationImpl> columnStyles = Collections.emptyList();
@@ -116,7 +156,7 @@ public class TableRenderer implements ElementRenderer {
             int vMergeCount = 0;
             for (int c = 0; c < tds.size(); c++) {
                 Element td = tds.get(c);
-                CSSStyleDeclarationImpl tdStyleDeclaration = CSSStyleUtils.parse(td.attr(HtmlConstants.ATTR_STYLE));
+                CSSStyleDeclarationImpl tdStyleDeclaration = CSSStyleUtils.parseNew(td.attr(HtmlConstants.ATTR_STYLE));
                 CSSLength tdWidth = CSSLength.of(tdStyleDeclaration.getWidth());
                 int rowspan = NumberUtils.toInt(td.attr(HtmlConstants.ATTR_ROWSPAN), 1);
                 int colspan = NumberUtils.toInt(td.attr(HtmlConstants.ATTR_COLSPAN), 1);

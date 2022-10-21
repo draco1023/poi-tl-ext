@@ -37,6 +37,7 @@ import org.apache.poi.xwpf.usermodel.XWPFStyle;
 import org.apache.poi.xwpf.usermodel.XWPFStyles;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.xmlbeans.XmlCursor;
+import org.apache.xmlbeans.XmlObject;
 import org.apache.xmlbeans.impl.xb.xmlschema.SpaceAttribute;
 import org.ddr.poi.html.util.CSSLength;
 import org.ddr.poi.html.util.CSSLengthUnit;
@@ -47,8 +48,13 @@ import org.ddr.poi.html.util.NamedFontSize;
 import org.ddr.poi.html.util.NumberingContext;
 import org.ddr.poi.html.util.RenderUtils;
 import org.ddr.poi.html.util.WhiteSpaceRule;
+import org.ddr.poi.html.util.XWPFParagraphRuns;
 import org.ddr.poi.util.XmlUtils;
 import org.jsoup.internal.StringUtil;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Node;
+import org.jsoup.nodes.TextNode;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTBlip;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTGraphicalObjectFrameLocking;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTNonVisualGraphicFrameProperties;
@@ -57,10 +63,14 @@ import org.openxmlformats.schemas.drawingml.x2006.main.CTOfficeArtExtensionList;
 import org.openxmlformats.schemas.drawingml.x2006.picture.CTPicture;
 import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.CTInline;
 import org.openxmlformats.schemas.officeDocument.x2006.sharedTypes.STVerticalAlignRun;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBookmark;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTColor;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDrawing;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTFonts;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTHyperlink;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTMarkupRange;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTP;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageMar;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
@@ -68,12 +78,18 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTRPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTShd;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTStyle;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTbl;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblBorders;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTText;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTUnderline;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STBorder;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STShd;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STStyleType;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STThemeColor;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STUnderline;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.xml.namespace.QName;
 import java.io.IOException;
@@ -88,6 +104,7 @@ import java.util.LinkedList;
  * @since 2021-02-08
  */
 public class HtmlRenderContext extends RenderContext<String> {
+    private static final Logger log = LoggerFactory.getLogger(HtmlRenderContext.class);
     private static final QName R_QNAME = new QName("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "r");
     private static final QName HYPERLINK_QNAME = new QName("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "hyperlink");
 
@@ -99,6 +116,11 @@ public class HtmlRenderContext extends RenderContext<String> {
      * 默认超链接颜色
      */
     private static final String DEFAULT_HYPERLINK_COLOR = "0563C1";
+
+    /**
+     * HTML元素渲染器提供者
+     */
+    private final ElementRendererProvider rendererProvider;
 
     /**
      * 最近的IBodyElement栈，主要用于渲染HTML表格时IBodyElement元素的切换
@@ -178,6 +200,10 @@ public class HtmlRenderContext extends RenderContext<String> {
      * 全局字号，声明后所有样式中的字号将失效
      */
     private BigInteger globalFontSize;
+    /**
+     * 嵌套表格是否默认显示边框
+     */
+    private boolean showDefaultTableBorderInTableCell;
 
     /**
      * 块状元素深度计数器
@@ -189,8 +215,10 @@ public class HtmlRenderContext extends RenderContext<String> {
      *
      * @param context 原始渲染上下文
      */
-    public HtmlRenderContext(RenderContext<String> context) {
+    public HtmlRenderContext(RenderContext<String> context, ElementRendererProvider rendererProvider) {
         super(context.getEleTemplate(), context.getData(), context.getTemplate());
+        this.rendererProvider = rendererProvider;
+
         numberingContext = new NumberingContext(getXWPFDocument());
 
         CTSectPr sectPr = getXWPFDocument().getDocument().getBody().getSectPr();
@@ -1053,6 +1081,14 @@ public class HtmlRenderContext extends RenderContext<String> {
         return globalFontSize;
     }
 
+    public boolean isShowDefaultTableBorderInTableCell() {
+        return showDefaultTableBorderInTableCell;
+    }
+
+    public void setShowDefaultTableBorderInTableCell(boolean showDefaultTableBorderInTableCell) {
+        this.showDefaultTableBorderInTableCell = showDefaultTableBorderInTableCell;
+    }
+
     public void setGlobalFont(String globalFont) {
         this.globalFont = globalFont;
     }
@@ -1071,5 +1107,220 @@ public class HtmlRenderContext extends RenderContext<String> {
 
     public void decrementBlockLevel() {
         blockLevel--;
+    }
+
+    public void renderDocument(Document document) {
+        for (Node node : document.body().childNodes()) {
+            renderNode(node);
+        }
+    }
+
+    public void renderNode(Node node) {
+        boolean isElement = node instanceof Element;
+
+        if (isElement) {
+            Element element = ((Element) node);
+            renderElement(element);
+        } else if (node instanceof TextNode) {
+            renderText(((TextNode) node).getWholeText());
+        }
+    }
+
+    public void renderElement(Element element) {
+        if (log.isDebugEnabled()) {
+            log.info("Start rendering html tag: <{}{}>", element.normalName(), element.attributes());
+        }
+        if (element.tag().isFormListed()) {
+            return;
+        }
+
+        CSSStyleDeclarationImpl cssStyleDeclaration = getCssStyleDeclaration(element);
+        String display = cssStyleDeclaration.getPropertyValue(HtmlConstants.CSS_DISPLAY);
+        if (HtmlConstants.NONE.equalsIgnoreCase(display)) {
+            return;
+        }
+        pushInlineStyle(cssStyleDeclaration, element.isBlock());
+
+        ElementRenderer elementRenderer = rendererProvider.get(element.normalName());
+        boolean blocked = false;
+
+        if (element.isBlock() && (elementRenderer == null || elementRenderer.renderAsBlock())) {
+            if (element.childNodeSize() == 0 && !HtmlConstants.KEEP_EMPTY_TAGS.contains(element.normalName())) {
+                return;
+            }
+            if (!isBlocked()) {
+                // 复制段落中占位符之前的部分内容
+                moveContentToNewPrevParagraph();
+            }
+            incrementBlockLevel();
+            blocked = true;
+
+            IBody container = getContainer();
+            boolean isTableTag = HtmlConstants.TAG_TABLE.equals(element.normalName());
+
+            XmlCursor xmlCursor = getElementCursor(container, isTableTag);
+            if (xmlCursor == null) {
+                decrementBlockLevel();
+                return;
+            }
+
+            if (isTableTag) {
+                XWPFTable xwpfTable = container.insertNewTbl(xmlCursor);
+                xmlCursor.dispose();
+                // 新增时会自动创建一行一列，会影响自定义的表格渲染逻辑，故删除
+                xwpfTable.removeRow(0);
+                replaceClosestBody(xwpfTable);
+
+                if (container.getPartType() == BodyType.TABLECELL && isShowDefaultTableBorderInTableCell()) {
+                    CTTbl ctTbl = xwpfTable.getCTTbl();
+                    CTTblPr tblPr = RenderUtils.getTblPr(ctTbl);
+                    CTTblBorders tblBorders = RenderUtils.getTblBorders(tblPr);
+                    tblBorders.addNewTop().setVal(STBorder.SINGLE);
+                    tblBorders.addNewLeft().setVal(STBorder.SINGLE);
+                    tblBorders.addNewBottom().setVal(STBorder.SINGLE);
+                    tblBorders.addNewRight().setVal(STBorder.SINGLE);
+                    tblBorders.addNewInsideH().setVal(STBorder.SINGLE);
+                    tblBorders.addNewInsideV().setVal(STBorder.SINGLE);
+                }
+
+                RenderUtils.tableStyle(this, xwpfTable, cssStyleDeclaration);
+            } else if (shouldNewParagraph(element)) {
+                XWPFParagraph xwpfParagraph = newParagraph(container, xmlCursor);
+                xmlCursor.dispose();
+                if (xwpfParagraph == null) {
+                    log.warn("Can not add new paragraph for element: {}, attributes: {}", element.tagName(), element.attributes().html());
+                }
+                replaceClosestBody(xwpfParagraph);
+
+                RenderUtils.paragraphStyle(this, xwpfParagraph, cssStyleDeclaration);
+            }
+        }
+
+        if (elementRenderer != null) {
+            if (!elementRenderer.renderStart(element, this)) {
+                renderElementEnd(element, this, elementRenderer, blocked);
+                return;
+            }
+        }
+
+        for (Node child : element.childNodes()) {
+            renderNode(child);
+        }
+
+        renderElementEnd(element, this, elementRenderer, blocked);
+    }
+
+    private boolean shouldNewParagraph(Element element) {
+        // li的第一个子节点如果为块状元素，避免生成新的段落
+        if (element.hasParent() && HtmlConstants.TAG_LI.equals(element.parent().normalName())
+                && element.parentNode().childNode(0) == element) {
+            return false;
+        }
+        return true;
+    }
+
+    private XmlCursor getElementCursor(IBody container, boolean isTableTag) {
+        XmlCursor xmlCursor;
+        if (containerChanged()) {
+            IBodyElement closestBody = getClosestBody();
+            switch (closestBody.getElementType()) {
+                case PARAGRAPH:
+                    xmlCursor = ((XWPFParagraph) closestBody).getCTP().newCursor();
+                    xmlCursor.toEndToken();
+                    xmlCursor.toNextToken();
+                    break;
+                case TABLE:
+                    xmlCursor = ((XWPFTable) closestBody).getCTTbl().newCursor();
+                    xmlCursor.toEndToken();
+                    xmlCursor.toNextToken();
+                    if (isTableTag) {
+                        // 插入一个段落，防止表格粘连在一起
+                        newParagraph(container, xmlCursor);
+                        xmlCursor.toNextToken();
+                    }
+                    break;
+                default:
+                    return null;
+            }
+        } else {
+            xmlCursor = getRun().getCTR().newCursor();
+            xmlCursor.toParent();
+            xmlCursor.push();
+            // 如果是表格，检查当前word容器的前一个兄弟元素是否为表格，是则插入一个段落，防止表格粘连在一起
+            if (isTableTag && xmlCursor.toPrevSibling()) {
+                if (xmlCursor.getObject() instanceof CTTbl) {
+                    xmlCursor.toNextSibling();
+                    newParagraph(container, xmlCursor);
+                }
+            }
+            xmlCursor.pop();
+        }
+        return xmlCursor;
+    }
+
+    private void renderElementEnd(Element element, HtmlRenderContext context, ElementRenderer elementRenderer, boolean blocked) {
+        if (elementRenderer != null) {
+            elementRenderer.renderEnd(element, context);
+        }
+        context.popInlineStyle();
+        if (blocked) {
+            context.decrementBlockLevel();
+        }
+    }
+
+    private void moveContentToNewPrevParagraph() {
+        CTR ctr = getRun().getCTR();
+        XmlCursor rCursor = ctr.newCursor();
+        boolean hasPrevSibling = false;
+        while (rCursor.toPrevSibling()) {
+            XmlObject object = rCursor.getObject();
+            if (object instanceof CTMarkupRange) {
+                continue;
+            }
+            if (!(object instanceof CTPPr)) {
+                hasPrevSibling = true;
+                break;
+            }
+        }
+        if (!hasPrevSibling) {
+            rCursor.dispose();
+            return;
+        }
+        rCursor.toParent();
+        rCursor.push();
+        CTP ctp = ((CTP) rCursor.getObject());
+        XWPFParagraph paragraph = getContainer().getParagraph(ctp);
+        XWPFParagraph newParagraph = getContainer().insertNewParagraph(rCursor);
+        XmlCursor pCursor = newParagraph.getCTP().newCursor();
+        pCursor.toEndToken();
+        rCursor.pop();
+        rCursor.toFirstChild();
+        while (!ctr.equals(rCursor.getObject())) {
+            XmlObject obj = rCursor.getObject();
+            if (obj instanceof CTPPr) {
+                rCursor.copyXml(pCursor);
+                rCursor.toNextSibling();
+            } else if (obj instanceof CTBookmark) {
+                rCursor.toNextSibling();
+            } else {
+                // moveXml附带了toNextSibling的效果
+                rCursor.moveXml(pCursor);
+            }
+        }
+        rCursor.dispose();
+        pCursor.dispose();
+
+        XWPFParagraphRuns runs = new XWPFParagraphRuns(paragraph);
+
+        for (int i = runs.runCount() - ctp.getRList().size() - 1; i >= 0; i--) {
+            runs.remove(i);
+        }
+    }
+
+    public CSSStyleDeclarationImpl getCssStyleDeclaration(Element element) {
+        String style = element.attr(HtmlConstants.ATTR_STYLE);
+        CSSStyleDeclarationImpl cssStyleDeclaration = CSSStyleUtils.parse(style);
+        CSSStyleUtils.split(cssStyleDeclaration);
+        return cssStyleDeclaration;
     }
 }
