@@ -18,9 +18,6 @@ package org.ddr.poi.html.tag;
 
 import com.steadystate.css.dom.CSSStyleDeclarationImpl;
 import org.apache.commons.lang3.math.NumberUtils;
-import org.apache.poi.xwpf.usermodel.BodyElementType;
-import org.apache.poi.xwpf.usermodel.IBodyElement;
-import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
@@ -30,7 +27,7 @@ import org.ddr.poi.html.HtmlConstants;
 import org.ddr.poi.html.HtmlRenderContext;
 import org.ddr.poi.html.util.RenderUtils;
 import org.jsoup.nodes.Element;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPPr;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTP;
 
 import java.util.List;
 
@@ -58,7 +55,11 @@ public class TableCellRenderer implements ElementRenderer {
         XWPFTable table = context.getClosestTable();
         XWPFTableCell cell = table.getRow(row).getCell(column);
         context.pushContainer(cell);
-        context.pushClosestBody(cell.getParagraphArray(0));
+        XWPFParagraph paragraph = cell.getParagraphArray(0);
+        XmlCursor newCursor = paragraph.getCTP().newCursor();
+        // 指针指向单元格默认添加的段落，所有内容将被添加到该段落之前
+        context.pushCursor(newCursor);
+        newCursor.dispose();
 
         RenderUtils.cellStyle(context, cell, styleDeclaration);
 
@@ -73,53 +74,17 @@ public class TableCellRenderer implements ElementRenderer {
      */
     @Override
     public void renderEnd(Element element, HtmlRenderContext context) {
-        // 单元格创建时默认包含一个空的段落，如果渲染完成时该段落不包含内容则删除
         List<XWPFParagraph> paragraphs = context.getContainer().getParagraphs();
         if (paragraphs.size() > 1) {
-            XmlCursor xmlCursor = paragraphs.get(0).getCTP().newCursor();
-            if (!xmlCursor.toFirstChild()) {
-                xmlCursor.removeXml();
-                paragraphs.remove(0);
+            XmlCursor xmlCursor = context.currentCursorObject().newCursor();
+            if (xmlCursor.toPrevSibling() && xmlCursor.getObject() instanceof CTP) {
+                ((XWPFTableCell) context.getContainer()).removeParagraph(paragraphs.size() - 1);
             }
             xmlCursor.dispose();
         }
 
-        // 保证单元格的最后一个子元素为段落
-        List<IBodyElement> bodyElements = context.getContainer().getBodyElements();
-        if (!bodyElements.isEmpty()) {
-            IBodyElement bodyElement = bodyElements.get(bodyElements.size() - 1);
-            if (bodyElement.getElementType() == BodyElementType.TABLE) {
-                XWPFTable table = (XWPFTable) bodyElement;
-                XWPFTableCell parentCell = (XWPFTableCell) context.getContainer();
-                XmlCursor xmlCursor = parentCell.getCTTc().newCursor();
-                xmlCursor.toLastChild();
-                while (true) {
-                    if (xmlCursor.getObject() == table.getCTTbl()) {
-                        xmlCursor.toEndToken();
-                        xmlCursor.toNextToken();
-                        parentCell.insertNewParagraph(xmlCursor);
-                        break;
-                    }
-                    if (!xmlCursor.toPrevSibling()) {
-                        break;
-                    }
-                }
-                xmlCursor.dispose();
-            }
-        }
-
-        ParagraphAlignment alignment = RenderUtils.align(context.currentElementStyle().getTextAlign());
-        if (alignment != null) {
-            for (XWPFParagraph paragraph : paragraphs) {
-                CTPPr pPr = paragraph.getCTP().getPPr();
-                if (pPr == null || !pPr.isSetJc()) {
-                    paragraph.setAlignment(alignment);
-                }
-            }
-        }
-
         context.popContainer();
-        context.popClosestBody();
+        context.popCursor();
     }
 
     @Override

@@ -24,7 +24,6 @@ import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.util.Units;
 import org.apache.poi.xwpf.usermodel.BodyType;
 import org.apache.poi.xwpf.usermodel.IBody;
-import org.apache.poi.xwpf.usermodel.IBodyElement;
 import org.apache.poi.xwpf.usermodel.IRunBody;
 import org.apache.poi.xwpf.usermodel.SVGPictureData;
 import org.apache.poi.xwpf.usermodel.SVGRelation;
@@ -123,11 +122,6 @@ public class HtmlRenderContext extends RenderContext<String> {
     private final ElementRendererProvider rendererProvider;
 
     /**
-     * 最近的IBodyElement栈，主要用于渲染HTML表格时IBodyElement元素的切换
-     */
-    private LinkedList<IBodyElement> closestBodyStack = new LinkedList<>();
-
-    /**
      * 父容器（子元素通常为段落/表格）栈，主要用于渲染HTML表格时父容器的切换
      */
     private LinkedList<IBody> ancestors = new LinkedList<>();
@@ -211,6 +205,16 @@ public class HtmlRenderContext extends RenderContext<String> {
     private int blockLevel;
 
     /**
+     * 全局xml指针，保证其总是处于将要插入内容的位置，仅在需要移动之前进行push，适时pop还原位置
+     */
+    private XmlCursor globalCursor;
+
+    /**
+     * 防重段落
+     */
+    private XWPFParagraph dedupeParagraph;
+
+    /**
      * 构造方法
      *
      * @param context 原始渲染上下文
@@ -218,6 +222,7 @@ public class HtmlRenderContext extends RenderContext<String> {
     public HtmlRenderContext(RenderContext<String> context, ElementRendererProvider rendererProvider) {
         super(context.getEleTemplate(), context.getData(), context.getTemplate());
         this.rendererProvider = rendererProvider;
+        globalCursor = getRun().getCTR().newCursor();
 
         numberingContext = new NumberingContext(getXWPFDocument());
 
@@ -296,10 +301,6 @@ public class HtmlRenderContext extends RenderContext<String> {
         return container == null ? super.getContainer() : container;
     }
 
-    public boolean containerChanged() {
-        return !ancestors.isEmpty();
-    }
-
     /**
      * 父容器入栈
      *
@@ -317,66 +318,36 @@ public class HtmlRenderContext extends RenderContext<String> {
     }
 
     /**
-     * 获取最近位置的内容元素（段落或表格）
-     *
-     * @return 最近位置的内容元素
-     */
-    public IBodyElement getClosestBody() {
-        IBodyElement body = closestBodyStack.peek();
-        return body == null ? (IBodyElement) getRun().getParent() : body;
-    }
-
-    /**
-     * 内容元素（段落或表格）入栈
-     *
-     * @param body 内容元素（段落或表格）
-     */
-    public void pushClosestBody(IBodyElement body) {
-        closestBodyStack.push(body);
-    }
-
-    /**
-     * 内容元素（段落或表格）出栈
-     */
-    public void popClosestBody() {
-        closestBodyStack.pop();
-    }
-
-    /**
-     * 替换最近位置的内容元素（段落或表格）
-     *
-     * @param body 内容元素（段落或表格）
-     */
-    public void replaceClosestBody(IBodyElement body) {
-        if (!closestBodyStack.isEmpty()) {
-            closestBodyStack.pop();
-        }
-        closestBodyStack.push(body);
-    }
-
-    /**
      * 获取最近的段落，如果当前最近位置的内容元素是表格，则创建一个与之平级的段落
      *
      * @return 最近的段落
      */
     public XWPFParagraph getClosestParagraph() {
-        IBodyElement body = closestBodyStack.peek();
-        if (body == null) {
+        if (globalCursor.getObject() == getRun().getCTR()) {
             return (XWPFParagraph) getRun().getParent();
         }
-        switch (body.getElementType()) {
-            case PARAGRAPH:
-                return (XWPFParagraph) body;
-            case TABLE:
-                XmlCursor xmlCursor = ((XWPFTable) body).getCTTbl().newCursor();
-                xmlCursor.toEndToken();
-                xmlCursor.toNextToken();
-                XWPFParagraph paragraph = newParagraph(null, xmlCursor);
-                replaceClosestBody(paragraph);
-                xmlCursor.dispose();
-                return paragraph;
+
+        globalCursor.push();
+        XWPFParagraph paragraph = null;
+        if (globalCursor.toPrevSibling()) {
+            XmlObject object = globalCursor.getObject();
+            if (object instanceof CTP) {
+                paragraph = getContainer().getParagraph((CTP) object);
+            } else {
+                // pop() is safer than toNextSibling()
+                globalCursor.pop();
+                globalCursor.push();
+                paragraph = newParagraph(null, globalCursor);
+                RenderUtils.paragraphStyle(this, paragraph, CSSStyleUtils.EMPTY_STYLE);
+            }
         }
-        throw new IllegalStateException("Impossible");
+        globalCursor.pop();
+
+        if (paragraph != null) {
+            return paragraph;
+        }
+
+        throw new IllegalStateException("No paragraph in stack");
     }
 
     /**
@@ -386,7 +357,11 @@ public class HtmlRenderContext extends RenderContext<String> {
      */
     public void startHyperlink(String uri) {
         if (isBlocked()) {
-            currentRun = getClosestParagraph().createHyperlinkRun(uri);
+            XWPFParagraph paragraph = getClosestParagraph();
+            currentRun = paragraph.createHyperlinkRun(uri);
+            if (dedupeParagraph == paragraph) {
+                dedupeParagraph = null;
+            }
         } else {
             // 在占位符之前插入超链接
             String rId = getRun().getParent().getPart().getPackagePart()
@@ -450,7 +425,11 @@ public class HtmlRenderContext extends RenderContext<String> {
         }
         // 考虑到样式可能不一致，总是创建新的run
         if (isBlocked()) {
-            currentRun = getClosestParagraph().createRun();
+            XWPFParagraph paragraph = getClosestParagraph();
+            currentRun = paragraph.createRun();
+            if (dedupeParagraph == paragraph) {
+                dedupeParagraph = null;
+            }
         } else {
             // 在占位符之前插入run
             XmlCursor xmlCursor = getRun().getCTR().newCursor();
@@ -482,11 +461,20 @@ public class HtmlRenderContext extends RenderContext<String> {
      * @return 最近的表格
      */
     public XWPFTable getClosestTable() {
-        for (IBodyElement body : closestBodyStack) {
-            if (body instanceof XWPFTable) {
-                return ((XWPFTable) body);
+        globalCursor.push();
+        XWPFTable table = null;
+        if (globalCursor.toPrevSibling()) {
+            XmlObject object = globalCursor.getObject();
+            if (object instanceof CTTbl) {
+                table = getContainer().getTable((CTTbl) object);
             }
         }
+        globalCursor.pop();
+
+        if (table != null) {
+            return table;
+        }
+
         throw new IllegalStateException("No table in stack");
     }
 
@@ -1144,7 +1132,7 @@ public class HtmlRenderContext extends RenderContext<String> {
         ElementRenderer elementRenderer = rendererProvider.get(element.normalName());
         boolean blocked = false;
 
-        if (element.isBlock() && (elementRenderer == null || elementRenderer.renderAsBlock())) {
+        if (renderAsBlock(element, elementRenderer)) {
             if (element.childNodeSize() == 0 && !HtmlConstants.KEEP_EMPTY_TAGS.contains(element.normalName())) {
                 return;
             }
@@ -1158,18 +1146,14 @@ public class HtmlRenderContext extends RenderContext<String> {
             IBody container = getContainer();
             boolean isTableTag = HtmlConstants.TAG_TABLE.equals(element.normalName());
 
-            XmlCursor xmlCursor = getElementCursor(container, isTableTag);
-            if (xmlCursor == null) {
-                decrementBlockLevel();
-                return;
-            }
+            adjustCursor(container, isTableTag);
 
             if (isTableTag) {
-                XWPFTable xwpfTable = container.insertNewTbl(xmlCursor);
-                xmlCursor.dispose();
+                globalCursor.push();
+                XWPFTable xwpfTable = container.insertNewTbl(globalCursor);
+                globalCursor.pop();
                 // 新增时会自动创建一行一列，会影响自定义的表格渲染逻辑，故删除
                 xwpfTable.removeRow(0);
-                replaceClosestBody(xwpfTable);
 
                 if (container.getPartType() == BodyType.TABLECELL && isShowDefaultTableBorderInTableCell()) {
                     CTTbl ctTbl = xwpfTable.getCTTbl();
@@ -1185,12 +1169,12 @@ public class HtmlRenderContext extends RenderContext<String> {
 
                 RenderUtils.tableStyle(this, xwpfTable, cssStyleDeclaration);
             } else if (shouldNewParagraph(element)) {
-                XWPFParagraph xwpfParagraph = newParagraph(container, xmlCursor);
-                xmlCursor.dispose();
+                globalCursor.push();
+                XWPFParagraph xwpfParagraph = newParagraph(container, globalCursor);
+                globalCursor.pop();
                 if (xwpfParagraph == null) {
                     log.warn("Can not add new paragraph for element: {}, attributes: {}", element.tagName(), element.attributes().html());
                 }
-                replaceClosestBody(xwpfParagraph);
 
                 RenderUtils.paragraphStyle(this, xwpfParagraph, cssStyleDeclaration);
             }
@@ -1210,52 +1194,48 @@ public class HtmlRenderContext extends RenderContext<String> {
         renderElementEnd(element, this, elementRenderer, blocked);
     }
 
-    private boolean shouldNewParagraph(Element element) {
-        // li的第一个子节点如果为块状元素，避免生成新的段落
-        if (element.hasParent() && HtmlConstants.TAG_LI.equals(element.parent().normalName())
-                && element.parentNode().childNode(0) == element) {
-            return false;
-        }
-        return true;
+    /**
+     * HTML元素是否按照块状进行渲染
+     *
+     * @param element HTML元素
+     * @return 是否按照块状进行渲染
+     */
+    public boolean renderAsBlock(Element element) {
+        return renderAsBlock(element, rendererProvider.get(element.normalName()));
     }
 
-    private XmlCursor getElementCursor(IBody container, boolean isTableTag) {
-        XmlCursor xmlCursor;
-        if (containerChanged()) {
-            IBodyElement closestBody = getClosestBody();
-            switch (closestBody.getElementType()) {
-                case PARAGRAPH:
-                    xmlCursor = ((XWPFParagraph) closestBody).getCTP().newCursor();
-                    xmlCursor.toEndToken();
-                    xmlCursor.toNextToken();
-                    break;
-                case TABLE:
-                    xmlCursor = ((XWPFTable) closestBody).getCTTbl().newCursor();
-                    xmlCursor.toEndToken();
-                    xmlCursor.toNextToken();
-                    if (isTableTag) {
-                        // 插入一个段落，防止表格粘连在一起
-                        newParagraph(container, xmlCursor);
-                        xmlCursor.toNextToken();
-                    }
-                    break;
-                default:
-                    return null;
-            }
-        } else {
-            xmlCursor = getRun().getCTR().newCursor();
-            xmlCursor.toParent();
-            xmlCursor.push();
-            // 如果是表格，检查当前word容器的前一个兄弟元素是否为表格，是则插入一个段落，防止表格粘连在一起
-            if (isTableTag && xmlCursor.toPrevSibling()) {
-                if (xmlCursor.getObject() instanceof CTTbl) {
-                    xmlCursor.toNextSibling();
-                    newParagraph(container, xmlCursor);
-                }
-            }
-            xmlCursor.pop();
+    /**
+     * HTML元素是否按照块状进行渲染
+     *
+     * @param element HTML元素
+     * @param elementRenderer 元素渲染器
+     * @return 是否按照块状进行渲染
+     */
+    private boolean renderAsBlock(Element element, ElementRenderer elementRenderer) {
+        return element.isBlock() && (elementRenderer == null || elementRenderer.renderAsBlock());
+    }
+
+    private boolean shouldNewParagraph(Element element) {
+        return dedupeParagraph == null;
+    }
+
+    private void adjustCursor(IBody container, boolean isTableTag) {
+        if (globalCursor.getObject() instanceof CTR) {
+            globalCursor.push();
+            globalCursor.toParent();
         }
-        return xmlCursor;
+        globalCursor.push();
+        // 如果是表格，检查当前word容器的前一个兄弟元素是否为表格，是则插入一个段落，防止表格粘连在一起
+        if (isTableTag && globalCursor.toPrevSibling()) {
+            if (globalCursor.getObject() instanceof CTTbl) {
+                // pop() is safer than toNextSibling()
+                globalCursor.pop();
+                globalCursor.push();
+                XWPFParagraph paragraph = newParagraph(container, globalCursor);
+                RenderUtils.paragraphStyle(this, paragraph, CSSStyleUtils.EMPTY_STYLE);
+            }
+        }
+        globalCursor.pop();
     }
 
     private void renderElementEnd(Element element, HtmlRenderContext context, ElementRenderer elementRenderer, boolean blocked) {
@@ -1322,5 +1302,47 @@ public class HtmlRenderContext extends RenderContext<String> {
         CSSStyleDeclarationImpl cssStyleDeclaration = CSSStyleUtils.parse(style);
         CSSStyleUtils.split(cssStyleDeclaration);
         return cssStyleDeclaration;
+    }
+
+    /**
+     * 保存当前指针位置并移动到目标指针位置
+     *
+     * @param targetCursor 目标指针
+     */
+    public void pushCursor(XmlCursor targetCursor) {
+        globalCursor.push();
+        globalCursor.toCursor(targetCursor);
+    }
+
+    /**
+     * 返回之前保存的指针位置
+     *
+     * @return 是否返回成功
+     */
+    public boolean popCursor() {
+        return globalCursor.pop();
+    }
+
+    /**
+     * @return 指针当前指向的对象
+     */
+    public XmlObject currentCursorObject() {
+        return globalCursor.getObject();
+    }
+
+    /**
+     * 标记段落以防止块状元素嵌套产生多余的空段落
+     *
+     * @param paragraph 段落
+     */
+    public void markDedupe(XWPFParagraph paragraph) {
+        dedupeParagraph = paragraph;
+    }
+
+    /**
+     * 取消段落防重标记
+     */
+    public void unmarkDedupe() {
+        dedupeParagraph = null;
     }
 }

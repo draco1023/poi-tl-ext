@@ -16,6 +16,7 @@
 
 package org.ddr.poi.html.tag;
 
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.ddr.poi.html.ElementRenderer;
 import org.ddr.poi.html.HtmlConstants;
 import org.ddr.poi.html.HtmlRenderContext;
@@ -39,8 +40,21 @@ public class ListItemRenderer implements ElementRenderer {
      */
     @Override
     public boolean renderStart(Element element, HtmlRenderContext context) {
-        context.getNumberingContext().add(context.getClosestParagraph());
+        XWPFParagraph paragraph = context.getClosestParagraph();
+        context.markDedupe(paragraph);
+        context.getNumberingContext().add(paragraph);
         return true;
+    }
+
+    /**
+     * 元素渲染结束需要执行的逻辑
+     *
+     * @param element HTML元素
+     * @param context 渲染上下文
+     */
+    @Override
+    public void renderEnd(Element element, HtmlRenderContext context) {
+        context.unmarkDedupe();
     }
 
     @Override

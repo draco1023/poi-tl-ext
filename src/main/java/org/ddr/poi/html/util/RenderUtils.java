@@ -17,7 +17,6 @@
 package org.ddr.poi.html.util;
 
 import com.steadystate.css.dom.CSSStyleDeclarationImpl;
-import com.steadystate.css.dom.CSSValueImpl;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.poi.util.Units;
@@ -58,7 +57,6 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.STBorder;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STLineSpacingRule;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STTblWidth;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STUnderline;
-import org.w3c.dom.css.CSSValue;
 
 import java.math.BigInteger;
 import java.util.function.Function;
@@ -258,14 +256,15 @@ public class RenderUtils {
      * @param cssStyleDeclaration CSS样式声明
      */
     public static void paragraphStyle(HtmlRenderContext context, XWPFParagraph paragraph, CSSStyleDeclarationImpl cssStyleDeclaration) {
-        if (CSSStyleUtils.isEmpty(cssStyleDeclaration)) {
-            return;
-        }
-
+        /* inheritable styles */
         // alignment
-        ParagraphAlignment align = align(cssStyleDeclaration.getTextAlign());
+        ParagraphAlignment align = align(context.getPropertyValue(HtmlConstants.CSS_TEXT_ALIGN));
         if (align != null) {
             paragraph.setAlignment(align);
+        }
+
+        if (CSSStyleUtils.isEmpty(cssStyleDeclaration)) {
+            return;
         }
 
         // border
@@ -357,19 +356,28 @@ public class RenderUtils {
         }
 
         // text-indent
-        CSSValueImpl textIndent = (CSSValueImpl) cssStyleDeclaration.getPropertyCSSValue(HtmlConstants.CSS_TEXT_INDENT);
-        if (textIndent != null) {
-            int length = textIndent.getLength();
-            if (length == 0) {
-                indent(context, paragraph, textIndent.getCssText());
-            } else {
-                for (int i = 0; i < length; i++) {
-                    CSSValue item = textIndent.item(i);
-                    boolean indented = indent(context, paragraph, item.getCssText());
-                    if (indented) {
-                        break;
+        String textIndent = context.getPropertyValue(HtmlConstants.CSS_TEXT_INDENT).trim();
+        if (textIndent.isEmpty()) {
+            indent(context, paragraph, textIndent);
+        } else {
+            int nonSpace = -1;
+            boolean indented = false;
+            for (int i = 0; i < textIndent.length(); i++) {
+                char c = textIndent.charAt(i);
+                if (Character.isWhitespace(c)) {
+                    if (nonSpace >= 0) {
+                        indented = indent(context, paragraph, textIndent.substring(nonSpace, i));
                     }
+                    nonSpace = -1;
+                } else if (nonSpace < 0) {
+                    nonSpace = i;
                 }
+                if (indented) {
+                    break;
+                }
+            }
+            if (nonSpace >= 0) {
+                indent(context, paragraph, textIndent.substring(nonSpace));
             }
         }
     }

@@ -67,16 +67,16 @@ import java.util.TreeMap;
 public class TableRenderer implements ElementRenderer {
     private static final String[] TAGS = {HtmlConstants.TAG_TABLE};
 
-    private static final CSSStyleDeclarationImpl DEFAULT_STYLE = new CSSStyleDeclarationImpl();
+    private final CSSStyleDeclarationImpl defaultCaptionStyle = new CSSStyleDeclarationImpl();
 
     public TableRenderer() {
-        DEFAULT_STYLE.setBackgroundColor("");
-        DEFAULT_STYLE.setBorder("");
-        DEFAULT_STYLE.setPadding("");
-        DEFAULT_STYLE.setMargin("");
-        DEFAULT_STYLE.setTextAlign(HtmlConstants.CENTER);
+        defaultCaptionStyle.setBackgroundColor("");
+        defaultCaptionStyle.setBorder("");
+        defaultCaptionStyle.setPadding("");
+        defaultCaptionStyle.setMargin("");
+        defaultCaptionStyle.setTextAlign(HtmlConstants.CENTER);
 
-        CSSStyleUtils.split(DEFAULT_STYLE);
+        CSSStyleUtils.split(defaultCaptionStyle);
     }
 
     /**
@@ -101,30 +101,7 @@ public class TableRenderer implements ElementRenderer {
 
         Element caption = JsoupUtils.firstChild(element, HtmlConstants.TAG_CAPTION);
         if (caption != null) {
-            CSSStyleDeclarationImpl captionStyle = context.getCssStyleDeclaration(caption);
-            if (CSSStyleUtils.EMPTY_STYLE == captionStyle) {
-                captionStyle = DEFAULT_STYLE;
-            } else {
-                captionStyle.getProperties().addAll(0, DEFAULT_STYLE.getProperties());
-            }
-            context.pushInlineStyle(captionStyle, caption.isBlock());
-            XWPFParagraph captionParagraph;
-            if (!HtmlConstants.BOTTOM.equals(captionStyle.getCaptionSide())) {
-                // 表格上方添加标题
-                XmlCursor xmlCursor = table.getCTTbl().newCursor();
-                captionParagraph = context.newParagraph(null, xmlCursor);
-                xmlCursor.dispose();
-                context.replaceClosestBody(captionParagraph);
-            } else {
-                captionParagraph = context.getClosestParagraph();
-            }
-            RenderUtils.paragraphStyle(context, captionParagraph, captionStyle);
-
-            for (Node node : caption.childNodes()) {
-                context.renderNode(node);
-            }
-            context.replaceClosestBody(table);
-            caption.remove();
+            renderCaption(context, table, caption);
         }
 
         Element colgroup = JsoupUtils.firstChild(element, HtmlConstants.TAG_COLGROUP);
@@ -312,6 +289,65 @@ public class TableRenderer implements ElementRenderer {
         }
 
         return true;
+    }
+
+    /**
+     * 渲染标题
+     *
+     * @param context 渲染上下文
+     * @param table 表格
+     * @param caption 标题元素
+     */
+    private void renderCaption(HtmlRenderContext context, XWPFTable table, Element caption) {
+        CSSStyleDeclarationImpl captionStyle = context.getCssStyleDeclaration(caption);
+        if (CSSStyleUtils.EMPTY_STYLE == captionStyle) {
+            captionStyle = defaultCaptionStyle;
+        } else {
+            captionStyle.getProperties().addAll(0, defaultCaptionStyle.getProperties());
+        }
+        context.pushInlineStyle(captionStyle, caption.isBlock());
+        XWPFParagraph captionParagraph;
+        boolean bottom = HtmlConstants.BOTTOM.equals(context.getPropertyValue(HtmlConstants.CSS_CAPTION_SIDE));
+        if (bottom) {
+            captionParagraph = context.getClosestParagraph();
+            caption.parent().attr(HtmlConstants.CSS_CAPTION_SIDE, HtmlConstants.BOTTOM);
+        } else {
+            // 表格上方添加标题
+            XmlCursor xmlCursor = table.getCTTbl().newCursor();
+            context.pushCursor(xmlCursor);
+            captionParagraph = context.newParagraph(null, xmlCursor);
+            xmlCursor.dispose();
+        }
+        RenderUtils.paragraphStyle(context, captionParagraph, captionStyle);
+
+        context.markDedupe(captionParagraph);
+        for (Node node : caption.childNodes()) {
+            context.renderNode(node);
+        }
+        context.unmarkDedupe();
+
+        context.popInlineStyle();
+        caption.remove();
+        if (bottom) {
+            XmlCursor xmlCursor = captionParagraph.getCTP().newCursor();
+            context.pushCursor(xmlCursor);
+            xmlCursor.dispose();
+        } else {
+            context.popCursor();
+        }
+    }
+
+    /**
+     * 元素渲染结束需要执行的逻辑
+     *
+     * @param element HTML元素
+     * @param context 渲染上下文
+     */
+    @Override
+    public void renderEnd(Element element, HtmlRenderContext context) {
+        if (HtmlConstants.BOTTOM.equals(element.attr(HtmlConstants.CSS_CAPTION_SIDE))) {
+            context.popCursor();
+        }
     }
 
     /**
