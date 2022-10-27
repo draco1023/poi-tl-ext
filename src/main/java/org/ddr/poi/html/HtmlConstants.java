@@ -162,6 +162,11 @@ public interface HtmlConstants {
     String CSS_WHITE_SPACE = "white-space";
     String CSS_LIST_STYLE = "list-style";
     String CSS_LIST_STYLE_TYPE = "list-style-type";
+    String CSS_BORDER_COLLAPSE = "border-collapse";
+    String CSS_BORDER_SPACING = "border-spacing";
+    String CSS_CAPTION_SIDE = "caption-side";
+    String CSS_LETTER_SPACING = "letter-spacing";
+    String CSS_TEXT_ALIGN = "text-align";
 
     String NORMAL = "normal";
     String ITALIC = "italic";
@@ -260,6 +265,54 @@ public interface HtmlConstants {
     // 不支持overline
     Set<String> TEXT_DECORATION_LINES = Sets.newHashSet(UNDERLINE, LINE_THROUGH);
     Set<String> TEXT_DECORATION_STYLES = Sets.newHashSet(SOLID, DOUBLE, DOTTED, DASHED, WAVY);
+
+    /**
+     * 可继承的样式
+     * <a href="https://www.w3.org/TR/CSS22/propidx.html">Specification</a>
+     */
+    Set<String> INHERITABLE_STYLES = Sets.newHashSet(
+            "azimuth",
+            CSS_BORDER_COLLAPSE,
+            CSS_BORDER_SPACING,
+            CSS_CAPTION_SIDE,
+            CSS_COLOR,
+            "cursor",
+            "direction",
+            "elevation",
+            "empty-cells",
+            CSS_FONT_FAMILY,
+            CSS_FONT_SIZE,
+            CSS_FONT_STYLE,
+            CSS_FONT_VARIANT_CAPS,
+            CSS_FONT_WEIGHT,
+            CSS_FONT,
+            CSS_LETTER_SPACING,
+            CSS_LINE_HEIGHT,
+            "list-style-image",
+            "list-style-position",
+            CSS_LIST_STYLE_TYPE,
+            CSS_LIST_STYLE,
+            "orphans",
+            "pitch-range",
+            "pitch",
+            "quotes",
+            "richness",
+            "speak-header",
+            "speak-numeral",
+            "speak-punctuation",
+            "speak",
+            "speech-rate",
+            "stress",
+            CSS_TEXT_ALIGN,
+            CSS_TEXT_INDENT,
+            "text-transform",
+            CSS_VISIBILITY,
+            "voice-family",
+            "volume",
+            CSS_WHITE_SPACE,
+            "widows",
+            "word-spacing"
+    );
 
     /**
      * 需要保留的空标签
