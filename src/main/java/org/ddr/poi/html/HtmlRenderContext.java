@@ -94,7 +94,9 @@ import javax.xml.namespace.QName;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
+import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.Set;
 
 /**
  * HTML字符串渲染上下文
@@ -515,6 +517,36 @@ public class HtmlRenderContext extends RenderContext<String> {
             }
         }
         fontSizesInHalfPoints.push(fontSize);
+
+        // text-decoration-line 在继承时需要合并
+        String textDecorationLine = inlineStyle.getPropertyValue(HtmlConstants.CSS_TEXT_DECORATION_LINE);
+        if (StringUtils.isNotBlank(textDecorationLine) && !HtmlConstants.NONE.equals(textDecorationLine)) {
+            Set<String> remainValues = new HashSet<>(HtmlConstants.TEXT_DECORATION_LINES);
+            String[] values = StringUtils.split(textDecorationLine, ' ');
+            for (String value : values) {
+                remainValues.remove(value);
+            }
+
+            if (!remainValues.isEmpty()) {
+                StringBuilder lines = new StringBuilder(textDecorationLine);
+                for (InlineStyle inheritedStyle : inlineStyles) {
+                    String s = inheritedStyle.getDeclaration().getPropertyValue(HtmlConstants.CSS_TEXT_DECORATION_LINE);
+                    if (HtmlConstants.NONE.equals(s)) {
+                        break;
+                    } else if (remainValues.contains(s)) {
+                        lines.append(' ').append(s);
+                        remainValues.remove(s);
+                        if (remainValues.isEmpty()) {
+                            break;
+                        }
+                    }
+                }
+                if (lines.length() > textDecorationLine.length()) {
+                    inlineStyle.setProperty(HtmlConstants.CSS_TEXT_DECORATION_LINE, lines.toString(), null);
+                }
+            }
+        }
+
         inlineStyles.push(new InlineStyle(inlineStyle, block));
     }
 
