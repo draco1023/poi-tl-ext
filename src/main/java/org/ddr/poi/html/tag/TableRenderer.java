@@ -17,7 +17,6 @@
 package org.ddr.poi.html.tag;
 
 import com.steadystate.css.dom.CSSStyleDeclarationImpl;
-import com.steadystate.css.dom.Property;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.poi.util.Units;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
@@ -31,6 +30,7 @@ import org.ddr.poi.html.HtmlRenderContext;
 import org.ddr.poi.html.util.CSSLength;
 import org.ddr.poi.html.util.CSSLengthUnit;
 import org.ddr.poi.html.util.CSSStyleUtils;
+import org.ddr.poi.html.util.ColumnStyle;
 import org.ddr.poi.html.util.JsoupUtils;
 import org.ddr.poi.html.util.RenderUtils;
 import org.ddr.poi.html.util.Span;
@@ -105,20 +105,8 @@ public class TableRenderer implements ElementRenderer {
         }
 
         Element colgroup = JsoupUtils.firstChild(element, HtmlConstants.TAG_COLGROUP);
-        List<CSSStyleDeclarationImpl> columnStyles = Collections.emptyList();
-        if (colgroup != null) {
-            Elements cols = colgroup.select(HtmlConstants.TAG_COL);
-            columnStyles = new ArrayList<>();
-            for (Element col : cols) {
-                String style = col.attr(HtmlConstants.ATTR_STYLE);
-                CSSStyleDeclarationImpl cssStyleDeclaration = CSSStyleUtils.parse(style);
-                int span = NumberUtils.toInt(col.attr(HtmlConstants.ATTR_SPAN), 1);
-                for (int i = 0; i < span; i++) {
-                    columnStyles.add(cssStyleDeclaration);
-                }
-            }
-            colgroup.remove();
-        }
+        List<ColumnStyle> columnStyles = extractColumnStyles(colgroup);
+
         Elements trs = JsoupUtils.childRows(element);
         Map<Integer, Span> rowSpanMap = new TreeMap<>();
         TreeMap<Integer, CSSLength> colWidthMap = new TreeMap<>();
@@ -133,11 +121,32 @@ public class TableRenderer implements ElementRenderer {
             int vMergeCount = 0;
             for (int c = 0; c < tds.size(); c++) {
                 Element td = tds.get(c);
-                CSSStyleDeclarationImpl tdStyleDeclaration = CSSStyleUtils.parseNew(td.attr(HtmlConstants.ATTR_STYLE));
-                CSSLength tdWidth = CSSLength.of(tdStyleDeclaration.getWidth());
                 int rowspan = NumberUtils.toInt(td.attr(HtmlConstants.ATTR_ROWSPAN), 1);
                 int colspan = NumberUtils.toInt(td.attr(HtmlConstants.ATTR_COLSPAN), 1);
                 minRowSpan = Math.min(minRowSpan, rowspan);
+
+                // 列定义的样式与单元格的样式合并
+                if (!columnStyles.isEmpty() && columnIndex < columnStyles.size()) {
+                    String colStyle = columnStyles.get(columnIndex).getStyle().getCssText();
+                    StringBuilder sb = new StringBuilder();
+                    if (!colStyle.isEmpty()) {
+                        sb.append(colStyle).append(HtmlConstants.SEMICOLON);
+                    }
+                    if (colspan > 1) {
+                        CSSLength tdWidth = sumColumnWidths(columnStyles, columnIndex, colspan);
+                        if (tdWidth.isValid()) {
+                            sb.append(HtmlConstants.CSS_WIDTH).append(HtmlConstants.COLON)
+                                    .append(tdWidth).append(HtmlConstants.SEMICOLON);
+                        }
+                    }
+                    if (sb.length() > 0) {
+                        sb.append(td.attr(HtmlConstants.ATTR_STYLE));
+                        td.attr(HtmlConstants.ATTR_STYLE, sb.toString());
+                    }
+                }
+
+                CSSStyleDeclarationImpl tdStyleDeclaration = CSSStyleUtils.parseNew(td.attr(HtmlConstants.ATTR_STYLE));
+                CSSLength tdWidth = CSSLength.of(tdStyleDeclaration.getWidth());
                 for (Map.Entry<Integer, Span> entry : rowSpanMap.entrySet()) {
                     if (entry.getKey() <= columnIndex && entry.getValue().isEnabled()) {
                         columnIndex += entry.getValue().getColumn();
@@ -179,15 +188,6 @@ public class TableRenderer implements ElementRenderer {
                 } else {
                     spanWidths.add(new SpanWidth(tdWidth, columnIndex, colspan, explicitWidth));
                     ctTcPr.addNewGridSpan().setVal(BigInteger.valueOf(colspan));
-                }
-
-                // 列定义的样式与单元格的样式合并
-                if (!columnStyles.isEmpty() && columnIndex < columnStyles.size()) {
-                    List<Property> properties = columnStyles.get(columnIndex).getProperties();
-                    if (!properties.isEmpty()) {
-                        tdStyleDeclaration.getProperties().addAll(0, properties);
-                        td.attr(HtmlConstants.ATTR_STYLE, tdStyleDeclaration.getCssText());
-                    }
                 }
 
                 columnIndex += colspan;
@@ -289,6 +289,60 @@ public class TableRenderer implements ElementRenderer {
         }
 
         return true;
+    }
+
+    private List<ColumnStyle> extractColumnStyles(Element colgroup) {
+        List<ColumnStyle> columnStyles = Collections.emptyList();
+        if (colgroup != null) {
+            Elements cols = colgroup.select(HtmlConstants.TAG_COL);
+            columnStyles = new ArrayList<>();
+            for (Element col : cols) {
+                String style = col.attr(HtmlConstants.ATTR_STYLE);
+                CSSStyleDeclarationImpl cssStyleDeclaration = CSSStyleUtils.parse(style);
+                int span = NumberUtils.toInt(col.attr(HtmlConstants.ATTR_SPAN), 1);
+                // 宽度样式优先于宽度属性
+                CSSLength colWidth = CSSLength.of(cssStyleDeclaration.getWidth());
+                if (!colWidth.isValid()) {
+                    String colWidthAttr = col.attr(HtmlConstants.ATTR_WIDTH);
+                    if (!colWidthAttr.isEmpty()) {
+                        if (!colWidthAttr.endsWith(HtmlConstants.PERCENT)) {
+                            colWidthAttr += HtmlConstants.PX;
+                        }
+                        colWidth = CSSLength.of(colWidthAttr);
+                    }
+                }
+                if (colWidth.isValid() && span > 1) {
+                    colWidth = new CSSLength(colWidth.getValue() / span, colWidth.getUnit());
+                }
+                for (int i = 0; i < span; i++) {
+                    columnStyles.add(new ColumnStyle(cssStyleDeclaration, colWidth));
+                }
+            }
+            colgroup.remove();
+        }
+        return columnStyles;
+    }
+
+    private CSSLength sumColumnWidths(List<ColumnStyle> columnWidths, int columnIndex, int colspan) {
+        Boolean percent = null;
+        double sum = 0d;
+        for (int i = 0; i < colspan; i++) {
+            CSSLength width = columnWidths.get(columnIndex + i).getWidth();
+            if (!width.isValid()) {
+                return width;
+            }
+            if (percent == null) {
+                percent = width.isPercent();
+            } else if (percent ^ width.isPercent()) {
+                return CSSLength.INVALID;
+            }
+            if (percent) {
+                sum += width.getValue();
+            } else {
+                sum += width.toEMU();
+            }
+        }
+        return new CSSLength(sum, percent ? CSSLengthUnit.PERCENT : CSSLengthUnit.EMU);
     }
 
     /**
