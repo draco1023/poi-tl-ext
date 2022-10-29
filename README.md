@@ -19,7 +19,7 @@ poi 5.x poi-tl 1.11.0+
 <dependency>
     <groupId>io.github.draco1023</groupId>
     <artifactId>poi-tl-ext</artifactId>
-    <version>0.4.0-beta</version>
+    <version>0.4.0-poi5</version>
 </dependency>
 ```
 
