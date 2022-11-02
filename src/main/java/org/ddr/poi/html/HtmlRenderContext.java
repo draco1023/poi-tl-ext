@@ -1130,7 +1130,15 @@ public class HtmlRenderContext extends RenderContext<String> {
     }
 
     public void renderDocument(Document document) {
-        for (Node node : document.body().childNodes()) {
+        Element body = document.body();
+        Element html = body.parent();
+        if (html.hasAttr(HtmlConstants.ATTR_STYLE)) {
+            pushInlineStyle(getCssStyleDeclaration(html), html.isBlock());
+        }
+        if (body.hasAttr(HtmlConstants.ATTR_STYLE)) {
+            pushInlineStyle(getCssStyleDeclaration(body), body.isBlock());
+        }
+        for (Node node : body.childNodes()) {
             renderNode(node);
         }
     }
