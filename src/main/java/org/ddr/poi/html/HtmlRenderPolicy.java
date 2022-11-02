@@ -141,7 +141,7 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
     @Override
     public void doRender(RenderContext<String> context) throws Exception {
         String html = FORMATTED_PATTERN.matcher(context.getData()).replaceAll(FORMATTED_REPLACEMENT);
-        Document document = JsoupUtils.parseBodyFragment(html);
+        Document document = JsoupUtils.parse(html);
         document.outputSettings().prettyPrint(false).indentAmount(0);
 
         HtmlRenderContext htmlRenderContext = new HtmlRenderContext(context, elRenderers::get);
