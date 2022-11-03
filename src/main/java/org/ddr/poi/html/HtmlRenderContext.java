@@ -30,6 +30,7 @@ import org.apache.poi.xwpf.usermodel.SVGPictureData;
 import org.apache.poi.xwpf.usermodel.SVGRelation;
 import org.apache.poi.xwpf.usermodel.XWPFHyperlinkRun;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFPicture;
 import org.apache.poi.xwpf.usermodel.XWPFRelation;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.apache.poi.xwpf.usermodel.XWPFStyle;
@@ -60,7 +61,14 @@ import org.openxmlformats.schemas.drawingml.x2006.main.CTNonVisualGraphicFramePr
 import org.openxmlformats.schemas.drawingml.x2006.main.CTOfficeArtExtension;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTOfficeArtExtensionList;
 import org.openxmlformats.schemas.drawingml.x2006.picture.CTPicture;
+import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.CTAnchor;
 import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.CTInline;
+import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.CTPosH;
+import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.CTPosV;
+import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.STAlignH;
+import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.STAlignV;
+import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.STRelFromH;
+import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.STRelFromV;
 import org.openxmlformats.schemas.officeDocument.x2006.sharedTypes.STVerticalAlignRun;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBookmark;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTColor;
@@ -968,8 +976,20 @@ public class HtmlRenderContext extends RenderContext<String> {
             throws IOException, InvalidFormatException {
         CTR ctr = newRun();
 
-        currentRun.addPicture(pictureData, pictureType, filename, width, height);
+        XWPFPicture xwpfPicture = currentRun.addPicture(pictureData, pictureType, filename, width, height);
         CTR r = currentRun.getCTR();
+
+        boolean isSvg = svgData != null;
+        if (isSvg) {
+            attachSvgData(xwpfPicture, svgData);
+        }
+
+        CSSStyleDeclarationImpl styleDeclaration = currentElementStyle();
+        String cssFloat = styleDeclaration.getPropertyValue(HtmlConstants.CSS_FLOAT);
+        boolean floatLeft = HtmlConstants.LEFT.equals(cssFloat);
+        boolean floatRight = !floatLeft && HtmlConstants.RIGHT.equals(cssFloat);
+        // vertical-align seems not working
+        boolean floated = floatLeft || floatRight;
 
         CTDrawing drawing = null;
         if (r != ctr) {
@@ -977,39 +997,60 @@ public class HtmlRenderContext extends RenderContext<String> {
             drawing = r.getDrawingArray(lastDrawingIndex);
             ctr.setDrawingArray(new CTDrawing[]{drawing});
             r.removeDrawing(lastDrawingIndex);
-        } else if (svgData != null) {
+            drawing = ctr.getDrawingArray(0);
+        } else if (isSvg || floated) {
             drawing = ctr.getDrawingArray(ctr.sizeOfDrawingArray() - 1);
         }
 
-        if (svgData != null) {
-            CTInline[] inlineArray = drawing.getInlineArray();
-            if (inlineArray.length > 0) {
-                CTInline ctInline = inlineArray[0];
-                String svgRelId = getXWPFDocument().addPictureData(svgData, SVGPictureData.PICTURE_TYPE_SVG);
+        if (drawing != null && drawing.sizeOfInlineArray() > 0) {
+            if (floated) {
+                CTAnchor ctAnchor = RenderUtils.inlineToAnchor(drawing);
+
+                CTPosH ctPosH = ctAnchor.addNewPositionH();
+                ctPosH.setRelativeFrom(STRelFromH.MARGIN);
+                ctPosH.setAlign(floatRight ? STAlignH.RIGHT : STAlignH.LEFT);
+
+                CTPosV ctPosV = ctAnchor.addNewPositionV();
+                ctPosV.setRelativeFrom(STRelFromV.PARAGRAPH);
+                ctPosV.setAlign(STAlignV.TOP);
+
+                if (isSvg) {
+                    CTNonVisualGraphicFrameProperties properties = ctAnchor.addNewCNvGraphicFramePr();
+                    CTGraphicalObjectFrameLocking frameLocking = properties.addNewGraphicFrameLocks();
+                    frameLocking.setNoChangeAspect(true);
+                }
+            } else if (isSvg) {
+                CTInline ctInline = drawing.getInlineArray(0);
                 CTNonVisualGraphicFrameProperties properties = ctInline.isSetCNvGraphicFramePr()
                         ? ctInline.getCNvGraphicFramePr() : ctInline.addNewCNvGraphicFramePr();
                 CTGraphicalObjectFrameLocking frameLocking = properties.isSetGraphicFrameLocks()
                         ? properties.getGraphicFrameLocks() : properties.addNewGraphicFrameLocks();
                 frameLocking.setNoChangeAspect(true);
-
-                XmlCursor xmlCursor = ctInline.getGraphic().getGraphicData().newCursor();
-                if (xmlCursor.toFirstChild()) {
-                    CTPicture ctPicture = (CTPicture) xmlCursor.getObject();
-                    CTBlip blip = ctPicture.getBlipFill().getBlip();
-                    if (blip != null) {
-                        CTOfficeArtExtensionList extList = blip.isSetExtLst() ? blip.getExtLst() : blip.addNewExtLst();
-                        CTOfficeArtExtension svgBitmap = extList.addNewExt();
-                        svgBitmap.setUri(SVGRelation.SVG_URI);
-                        XmlCursor cur = svgBitmap.newCursor();
-                        cur.toEndToken();
-                        cur.beginElement(SVGRelation.SVG_QNAME);
-                        cur.insertNamespace(SVGRelation.SVG_PREFIX, SVGRelation.MS_SVG_NS);
-                        cur.insertAttributeWithValue(SVGRelation.EMBED_TAG, svgRelId);
-                        cur.dispose();
-                    }
-                }
-                xmlCursor.dispose();
             }
+        }
+    }
+
+    /**
+     * 附加SVG数据
+     *
+     * @param xwpfPicture 图片
+     * @param svgData SVG数据
+     * @throws InvalidFormatException 非法格式
+     */
+    private void attachSvgData(XWPFPicture xwpfPicture, byte[] svgData) throws InvalidFormatException {
+        CTPicture ctPicture = xwpfPicture.getCTPicture();
+        String svgRelId = getXWPFDocument().addPictureData(svgData, SVGPictureData.PICTURE_TYPE_SVG);
+        CTBlip blip = ctPicture.getBlipFill().getBlip();
+        if (blip != null) {
+            CTOfficeArtExtensionList extList = blip.isSetExtLst() ? blip.getExtLst() : blip.addNewExtLst();
+            CTOfficeArtExtension svgBitmap = extList.addNewExt();
+            svgBitmap.setUri(SVGRelation.SVG_URI);
+            XmlCursor cur = svgBitmap.newCursor();
+            cur.toEndToken();
+            cur.beginElement(SVGRelation.SVG_QNAME);
+            cur.insertNamespace(SVGRelation.SVG_PREFIX, SVGRelation.MS_SVG_NS);
+            cur.insertAttributeWithValue(SVGRelation.EMBED_TAG, svgRelId);
+            cur.dispose();
         }
     }
 

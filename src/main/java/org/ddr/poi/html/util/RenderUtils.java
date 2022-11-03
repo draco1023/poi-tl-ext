@@ -32,8 +32,13 @@ import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.ddr.poi.html.HtmlConstants;
 import org.ddr.poi.html.HtmlRenderContext;
+import org.openxmlformats.schemas.drawingml.x2006.main.CTPoint2D;
+import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.CTAnchor;
+import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.CTInline;
+import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.STWrapText;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBorder;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTColor;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDrawing;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTInd;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTJc;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTP;
@@ -859,5 +864,38 @@ public class RenderUtils {
             default:
                 return XWPFTableCell.XWPFVertAlign.TOP;
         }
+    }
+
+    /**
+     * 嵌入式图片转换为环绕式图片
+     *
+     * @param drawing 绘图容器
+     * @return 环绕式图片
+     */
+    public static CTAnchor inlineToAnchor(CTDrawing drawing) {
+        CTInline ctInline = drawing.getInlineArray(0);
+        CTAnchor ctAnchor = drawing.addNewAnchor();
+        ctAnchor.setDocPr(ctInline.getDocPr());
+        ctAnchor.setExtent(ctInline.getExtent());
+        ctAnchor.setGraphic(ctInline.getGraphic());
+        drawing.removeInline(0);
+
+        ctAnchor.setAllowOverlap(true);
+        ctAnchor.setBehindDoc(false);
+        ctAnchor.setRelativeHeight(0);
+        ctAnchor.setDistL(0);
+        ctAnchor.setDistR(0);
+        ctAnchor.setDistB(0);
+        ctAnchor.setDistT(0);
+        ctAnchor.setLayoutInCell(true);
+        ctAnchor.setLocked(false);
+        ctAnchor.addNewWrapSquare().setWrapText(STWrapText.BOTH_SIDES);
+
+        ctAnchor.setSimplePos2(false);
+        CTPoint2D simplePos = ctAnchor.addNewSimplePos();
+        simplePos.setX(0);
+        simplePos.setY(0);
+
+        return ctAnchor;
     }
 }
