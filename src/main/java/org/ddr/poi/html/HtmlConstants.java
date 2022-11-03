@@ -87,6 +87,8 @@ public interface HtmlConstants {
     String TAG_RUBY = "ruby";
     String TAG_RP = "rp";
     String TAG_RT = "rt";
+    String TAG_FIGURE = "figure";
+    String TAG_FIGURE_CAPTION = "figcaption";
 
     String ATTR_STYLE = "style";
     String ATTR_SRC = "src";

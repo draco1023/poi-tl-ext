@@ -32,6 +32,8 @@ import org.ddr.poi.html.tag.BigRenderer;
 import org.ddr.poi.html.tag.BoldRenderer;
 import org.ddr.poi.html.tag.BreakRenderer;
 import org.ddr.poi.html.tag.DeleteRenderer;
+import org.ddr.poi.html.tag.FigureCaptionRenderer;
+import org.ddr.poi.html.tag.FigureRenderer;
 import org.ddr.poi.html.tag.HeaderBreakRenderer;
 import org.ddr.poi.html.tag.HeaderRenderer;
 import org.ddr.poi.html.tag.ImageRenderer;
@@ -93,6 +95,8 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
                 new BoldRenderer(),
                 new BreakRenderer(),
                 new DeleteRenderer(),
+                new FigureRenderer(),
+                new FigureCaptionRenderer(),
                 new HeaderBreakRenderer(),
                 new HeaderRenderer(),
                 new ImageRenderer(),
