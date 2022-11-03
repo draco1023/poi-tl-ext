@@ -9,7 +9,7 @@ poi 4.x poi-tl 1.11 以前的版本
 <dependency>
     <groupId>io.github.draco1023</groupId>
     <artifactId>poi-tl-ext</artifactId>
-    <version>0.4.0</version>
+    <version>0.4.1</version>
 </dependency>
 ```
 
@@ -19,7 +19,7 @@ poi 5.x poi-tl 1.11.0+
 <dependency>
     <groupId>io.github.draco1023</groupId>
     <artifactId>poi-tl-ext</artifactId>
-    <version>0.4.0-poi5</version>
+    <version>0.4.1-poi5</version>
 </dependency>
 ```
 
@@ -40,8 +40,8 @@ poi 5.x poi-tl 1.11.0+
   ```
   
   `HtmlRenderPolicy`可以通过`HtmlRenderConfig`进行如下设置：
-  - `globalFont` 全局默认字体
-  - `globalFontSize` 全局默认字号
+  - `globalFont` 全局默认字体（用于归一化处理，而不是用于样式兜底）
+  - `globalFontSize` 全局默认字号（用于归一化处理，而不是用于样式兜底）
   - `showDefaultTableBorderInTableCell` 是否显示嵌套表格的边框（`poi`生成嵌套表格时默认不显示边框，见#12）
   - `numberingIndent` 多级列表项缩进长度，默认值360
   - `numberingSpacing` 列表编号与内容之间的间隔类型，`STLevelSuffix.NOTHING`/`STLevelSuffix.SPACE`/`STLevelSuffix.TAB`
