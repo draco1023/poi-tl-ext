@@ -28,6 +28,10 @@ import org.apache.poi.xwpf.usermodel.IBody;
 import org.apache.poi.xwpf.usermodel.IRunBody;
 import org.apache.poi.xwpf.usermodel.SVGPictureData;
 import org.apache.poi.xwpf.usermodel.SVGRelation;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFFooter;
+import org.apache.poi.xwpf.usermodel.XWPFFootnote;
+import org.apache.poi.xwpf.usermodel.XWPFHeader;
 import org.apache.poi.xwpf.usermodel.XWPFHyperlinkRun;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFPicture;
@@ -36,6 +40,7 @@ import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.apache.poi.xwpf.usermodel.XWPFStyle;
 import org.apache.poi.xwpf.usermodel.XWPFStyles;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.xmlbeans.XmlCursor;
 import org.apache.xmlbeans.XmlObject;
 import org.apache.xmlbeans.impl.xb.xmlschema.SpaceAttribute;
@@ -1233,6 +1238,10 @@ public class HtmlRenderContext extends RenderContext<String> {
                 globalCursor.push();
                 XWPFTable xwpfTable = container.insertNewTbl(globalCursor);
                 globalCursor.pop();
+                if (dedupeParagraph != null) {
+                    removeParagraph(container, dedupeParagraph);
+                    dedupeParagraph = null;
+                }
                 // 新增时会自动创建一行一列，会影响自定义的表格渲染逻辑，故删除
                 xwpfTable.removeRow(0);
 
@@ -1273,6 +1282,34 @@ public class HtmlRenderContext extends RenderContext<String> {
         }
 
         renderElementEnd(element, this, elementRenderer, blocked);
+    }
+
+    private void removeParagraph(IBody container, XWPFParagraph paragraph) {
+        switch (container.getPartType()) {
+            case CONTENTCONTROL:
+                break;
+            case DOCUMENT:
+                XWPFDocument xwpfDocument = (XWPFDocument) container;
+                int posOfParagraph = xwpfDocument.getPosOfParagraph(paragraph);
+                xwpfDocument.removeBodyElement(posOfParagraph);
+                break;
+            case HEADER:
+                XWPFHeader xwpfHeader = (XWPFHeader) container;
+                xwpfHeader.removeParagraph(paragraph);
+                break;
+            case FOOTER:
+                XWPFFooter xwpfFooter = (XWPFFooter) container;
+                xwpfFooter.removeParagraph(paragraph);
+                break;
+            case FOOTNOTE:
+                XWPFFootnote xwpfFootnote = (XWPFFootnote) container;
+                xwpfFootnote.getParagraphs().remove(paragraph);
+                break;
+            case TABLECELL:
+                XWPFTableCell xwpfTableCell = (XWPFTableCell) container;
+                xwpfTableCell.getParagraphs().remove(paragraph);
+                break;
+        }
     }
 
     /**
