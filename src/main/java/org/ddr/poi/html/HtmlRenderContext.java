@@ -1307,7 +1307,7 @@ public class HtmlRenderContext extends RenderContext<String> {
                 break;
             case TABLECELL:
                 XWPFTableCell xwpfTableCell = (XWPFTableCell) container;
-                xwpfTableCell.getParagraphs().remove(paragraph);
+                xwpfTableCell.removeParagraph(xwpfTableCell.getParagraphs().indexOf(paragraph));
                 break;
         }
     }
