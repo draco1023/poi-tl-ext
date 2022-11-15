@@ -241,12 +241,12 @@ public class HtmlRenderContext extends RenderContext<String> {
 
         numberingContext = new NumberingContext(getXWPFDocument());
 
-        long w = RenderUtils.A4_WIDTH;
-        long h = RenderUtils.A4_HEIGHT;
-        long top = RenderUtils.DEFAULT_TOP_MARGIN;
-        long right = RenderUtils.DEFAULT_RIGHT_MARGIN;
-        long bottom = RenderUtils.DEFAULT_BOTTOM_MARGIN;
-        long left = RenderUtils.DEFAULT_LEFT_MARGIN;
+        long w = RenderUtils.A4_WIDTH * Units.EMU_PER_DXA;
+        long h = RenderUtils.A4_HEIGHT * Units.EMU_PER_DXA;
+        long top = RenderUtils.DEFAULT_TOP_MARGIN * Units.EMU_PER_DXA;
+        long right = RenderUtils.DEFAULT_RIGHT_MARGIN * Units.EMU_PER_DXA;
+        long bottom = RenderUtils.DEFAULT_BOTTOM_MARGIN * Units.EMU_PER_DXA;
+        long left = RenderUtils.DEFAULT_LEFT_MARGIN * Units.EMU_PER_DXA;
         CTSectPr sectPr = getXWPFDocument().getDocument().getBody().getSectPr();
         if (sectPr != null) {
             CTPageSz pgSz = sectPr.getPgSz();
