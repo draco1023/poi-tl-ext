@@ -241,24 +241,36 @@ public class HtmlRenderContext extends RenderContext<String> {
 
         numberingContext = new NumberingContext(getXWPFDocument());
 
+        long w = RenderUtils.A4_WIDTH;
+        long h = RenderUtils.A4_HEIGHT;
+        long top = RenderUtils.DEFAULT_TOP_MARGIN;
+        long right = RenderUtils.DEFAULT_RIGHT_MARGIN;
+        long bottom = RenderUtils.DEFAULT_BOTTOM_MARGIN;
+        long left = RenderUtils.DEFAULT_LEFT_MARGIN;
         CTSectPr sectPr = getXWPFDocument().getDocument().getBody().getSectPr();
-        CTPageSz pgSz = sectPr.getPgSz();
+        if (sectPr != null) {
+            CTPageSz pgSz = sectPr.getPgSz();
 
-        long w = POIXMLUnits.parseLength(pgSz.xgetW());
+            if (pgSz != null) {
+                w = POIXMLUnits.parseLength(pgSz.xgetW());
+                h = POIXMLUnits.parseLength(pgSz.xgetH());
+            }
+
+            CTPageMar pgMar = sectPr.getPgMar();
+            if (pgMar != null) {
+                top = POIXMLUnits.parseLength(pgMar.xgetTop());
+                right = POIXMLUnits.parseLength(pgMar.xgetRight());
+                bottom = POIXMLUnits.parseLength(pgMar.xgetBottom());
+                left = POIXMLUnits.parseLength(pgMar.xgetLeft());
+            }
+        }
+
         pageWidth = new CSSLength(w, CSSLengthUnit.EMU);
-        long h = POIXMLUnits.parseLength(pgSz.xgetH());
         pageHeight = new CSSLength(h, CSSLengthUnit.EMU);
-
-        CTPageMar pgMar = sectPr.getPgMar();
-        long top = POIXMLUnits.parseLength(pgMar.xgetTop());
         marginTop = new CSSLength(top, CSSLengthUnit.EMU);
-        long right = POIXMLUnits.parseLength(pgMar.xgetRight());
         marginRight = new CSSLength(right, CSSLengthUnit.EMU);
-        long bottom = POIXMLUnits.parseLength(pgMar.xgetBottom());
         marginBottom = new CSSLength(bottom, CSSLengthUnit.EMU);
-        long left = POIXMLUnits.parseLength(pgMar.xgetLeft());
         marginLeft = new CSSLength(left, CSSLengthUnit.EMU);
-
         availablePageWidth = (int) (w - left - right);
         availablePageHeight = (int) (h - top - bottom);
 
