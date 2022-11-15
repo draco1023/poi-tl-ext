@@ -98,6 +98,32 @@ public class RenderUtils {
      * 段落行距系数
      */
     public static final int SPACING_FACTOR = 240;
+    /**
+     * 默认页面宽度 A4 portrait
+     */
+    public static final int A4_WIDTH = 11906;
+    /**
+     * 默认页面高度 A4 portrait
+     */
+    public static final int A4_HEIGHT = 16838;
+
+    // Defined in [ Word 2010 look.dotx ]
+    /**
+     * 默认顶边距
+     */
+    public static final int DEFAULT_TOP_MARGIN = 1440;
+    /**
+     * 默认底边距
+     */
+    public static final int DEFAULT_BOTTOM_MARGIN = 1440;
+    /**
+     * 默认左边距
+     */
+    public static final int DEFAULT_LEFT_MARGIN = 1440;
+    /**
+     * 默认右边距
+     */
+    public static final int DEFAULT_RIGHT_MARGIN = 1440;
 
     /**
      * 文本对齐值映射
