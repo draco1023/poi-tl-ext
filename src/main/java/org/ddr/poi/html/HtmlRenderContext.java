@@ -241,24 +241,36 @@ public class HtmlRenderContext extends RenderContext<String> {
 
         numberingContext = new NumberingContext(getXWPFDocument());
 
+        int w = RenderUtils.A4_WIDTH;
+        int h = RenderUtils.A4_HEIGHT;
+        int top = RenderUtils.DEFAULT_TOP_MARGIN;
+        int right = RenderUtils.DEFAULT_RIGHT_MARGIN;
+        int bottom = RenderUtils.DEFAULT_BOTTOM_MARGIN;
+        int left = RenderUtils.DEFAULT_LEFT_MARGIN;
         CTSectPr sectPr = getXWPFDocument().getDocument().getBody().getSectPr();
-        CTPageSz pgSz = sectPr.getPgSz();
-        // 页面尺寸单位是twip
-        int w = pgSz.getW().intValue();
+        if (sectPr != null) {
+            CTPageSz pgSz = sectPr.getPgSz();
+            // 页面尺寸单位是twip
+            if (pgSz != null) {
+                w = pgSz.getW().intValue();
+                h = pgSz.getH().intValue();
+            }
+
+            CTPageMar pgMar = sectPr.getPgMar();
+            if (pgMar != null) {
+                top = pgMar.getTop().intValue();
+                right = pgMar.getRight().intValue();
+                bottom = pgMar.getBottom().intValue();
+                left = pgMar.getLeft().intValue();
+            }
+        }
+
         pageWidth = new CSSLength(w, CSSLengthUnit.TWIP);
-        int h = pgSz.getH().intValue();
         pageHeight = new CSSLength(h, CSSLengthUnit.TWIP);
-
-        CTPageMar pgMar = sectPr.getPgMar();
-        int top = pgMar.getTop().intValue();
         marginTop = new CSSLength(top, CSSLengthUnit.TWIP);
-        int right = pgMar.getRight().intValue();
         marginRight = new CSSLength(right, CSSLengthUnit.TWIP);
-        int bottom = pgMar.getBottom().intValue();
         marginBottom = new CSSLength(bottom, CSSLengthUnit.TWIP);
-        int left = pgMar.getLeft().intValue();
         marginLeft = new CSSLength(left, CSSLengthUnit.TWIP);
-
         availablePageWidth = new CSSLength(w - left - right, CSSLengthUnit.TWIP).toEMU();
         availablePageHeight = new CSSLength(h - top - bottom, CSSLengthUnit.TWIP).toEMU();
 
@@ -1307,7 +1319,7 @@ public class HtmlRenderContext extends RenderContext<String> {
                 break;
             case TABLECELL:
                 XWPFTableCell xwpfTableCell = (XWPFTableCell) container;
-                xwpfTableCell.getParagraphs().remove(paragraph);
+                xwpfTableCell.removeParagraph(xwpfTableCell.getParagraphs().indexOf(paragraph));
                 break;
         }
     }
