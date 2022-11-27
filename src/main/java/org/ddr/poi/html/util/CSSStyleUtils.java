@@ -26,10 +26,6 @@ public class CSSStyleUtils {
     private static final Logger log = LoggerFactory.getLogger(CSSStyleUtils.class);
 
     /**
-     * CSS解析器
-     */
-    public static final CSSOMParser CSS_PARSER = new CSSOMParser(new SACParserCSS3());
-    /**
      * 空样式
      */
     public static final CSSStyleDeclarationImpl EMPTY_STYLE = new EmptyCSSStyle();
@@ -45,6 +41,13 @@ public class CSSStyleUtils {
     }
 
     /**
+     * CSS解析器
+     */
+    public static CSSOMParser newParser() {
+        return new CSSOMParser(new SACParserCSS3());
+    }
+
+    /**
      * 解析行内样式，解析失败时返回默认空样式
      *
      * @param inlineStyle 行内样式声明
@@ -52,7 +55,7 @@ public class CSSStyleUtils {
      */
     public static CSSStyleDeclarationImpl parse(String inlineStyle) {
         try (StringReader sr = new StringReader(inlineStyle)) {
-            return (CSSStyleDeclarationImpl) CSS_PARSER.parseStyleDeclaration(new InputSource(sr));
+            return (CSSStyleDeclarationImpl) newParser().parseStyleDeclaration(new InputSource(sr));
         } catch (IOException e) {
             log.warn("Inline style parse error: {}", inlineStyle, e);
             return EMPTY_STYLE;
@@ -67,7 +70,7 @@ public class CSSStyleUtils {
      */
     public static CSSStyleDeclarationImpl parseNew(String inlineStyle) {
         try (StringReader sr = new StringReader(inlineStyle)) {
-            return (CSSStyleDeclarationImpl) CSS_PARSER.parseStyleDeclaration(new InputSource(sr));
+            return (CSSStyleDeclarationImpl) newParser().parseStyleDeclaration(new InputSource(sr));
         } catch (IOException e) {
             log.warn("Inline style parse error: {}", inlineStyle, e);
             return new CSSStyleDeclarationImpl();
@@ -82,7 +85,7 @@ public class CSSStyleUtils {
      */
     public static CSSValue parseValue(String value) {
         try (StringReader sr = new StringReader(value)) {
-            return CSS_PARSER.parsePropertyValue(new InputSource(sr));
+            return newParser().parsePropertyValue(new InputSource(sr));
         } catch (IOException e) {
             log.warn("CSS value parse error: {}", value, e);
             return new CSSValueImpl();
