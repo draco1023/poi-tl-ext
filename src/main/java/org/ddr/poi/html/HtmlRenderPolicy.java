@@ -63,7 +63,6 @@ import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
 
 /**
  * HTML字符串渲染策略
@@ -73,8 +72,6 @@ import java.util.regex.Pattern;
  */
 public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
     private final Map<String, ElementRenderer> elRenderers;
-    private static final Pattern FORMATTED_PATTERN = Pattern.compile(">\\s+<");
-    private static final String FORMATTED_REPLACEMENT = "><";
     private final HtmlRenderConfig config;
 
     public HtmlRenderPolicy() {
@@ -144,8 +141,7 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
 
     @Override
     public void doRender(RenderContext<String> context) throws Exception {
-        String html = FORMATTED_PATTERN.matcher(context.getData()).replaceAll(FORMATTED_REPLACEMENT);
-        Document document = JsoupUtils.parse(html);
+        Document document = JsoupUtils.parse(context.getData());
         document.outputSettings().prettyPrint(false).indentAmount(0);
 
         HtmlRenderContext htmlRenderContext = new HtmlRenderContext(context, elRenderers::get);
