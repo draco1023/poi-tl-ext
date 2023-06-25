@@ -125,6 +125,19 @@ public class TableRenderer implements ElementRenderer {
                 int colspan = NumberUtils.toInt(td.attr(HtmlConstants.ATTR_COLSPAN), 1);
                 minRowSpan = Math.min(minRowSpan, rowspan);
 
+                for (Map.Entry<Integer, Span> entry : rowSpanMap.entrySet()) {
+                    if (entry.getKey() <= columnIndex && entry.getValue().isEnabled()) {
+                        columnIndex += entry.getValue().getColumn();
+                        entry.getValue().setEnabled(false);
+                        // 合并行也需要生成单元格
+                        addVMergeCell(row, c, entry.getValue());
+                        vMergeCount++;
+                    }
+                }
+                // 标记行列索引，便于渲染单元格时获取容器
+                td.attr(HtmlConstants.ATTR_ROW_INDEX, String.valueOf(r));
+                td.attr(HtmlConstants.ATTR_COLUMN_INDEX, String.valueOf(c + vMergeCount));
+
                 // 列定义的样式与单元格的样式合并
                 if (!columnStyles.isEmpty() && columnIndex < columnStyles.size()) {
                     String colStyle = columnStyles.get(columnIndex).getStyle().getCssText();
@@ -147,18 +160,6 @@ public class TableRenderer implements ElementRenderer {
 
                 CSSStyleDeclarationImpl tdStyleDeclaration = CSSStyleUtils.parseNew(td.attr(HtmlConstants.ATTR_STYLE));
                 CSSLength tdWidth = CSSLength.of(tdStyleDeclaration.getWidth());
-                for (Map.Entry<Integer, Span> entry : rowSpanMap.entrySet()) {
-                    if (entry.getKey() <= columnIndex && entry.getValue().isEnabled()) {
-                        columnIndex += entry.getValue().getColumn();
-                        entry.getValue().setEnabled(false);
-                        // 合并行也需要生成单元格
-                        addVMergeCell(row, c, entry.getValue());
-                        vMergeCount++;
-                    }
-                }
-                // 标记行列索引，便于渲染单元格时获取容器
-                td.attr(HtmlConstants.ATTR_ROW_INDEX, String.valueOf(r));
-                td.attr(HtmlConstants.ATTR_COLUMN_INDEX, String.valueOf(c + vMergeCount));
 
                 // 必须晚于之前列的行合并单元格创建
                 XWPFTableCell cell = createCell(row, c);
