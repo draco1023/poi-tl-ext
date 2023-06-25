@@ -89,6 +89,8 @@ public interface HtmlConstants {
     String TAG_RT = "rt";
     String TAG_FIGURE = "figure";
     String TAG_FIGURE_CAPTION = "figcaption";
+    String TAG_PRE = "pre";
+    String TAG_XMP = "xmp";
 
     String ATTR_STYLE = "style";
     String ATTR_SRC = "src";
@@ -335,6 +337,7 @@ public interface HtmlConstants {
     String DEFINED_LARGER = inlineStyle(CSS_FONT_SIZE, LARGER);
     String DEFINED_SMALLER = inlineStyle(CSS_FONT_SIZE, SMALLER);
     String DEFINED_MARK = inlineStyle(CSS_BACKGROUND_COLOR, Colors.getColorByName("yellow"));
+    String DEFINED_PRE = inlineStyle(CSS_WHITE_SPACE, PRE);
 
     /**
      * 生成行内样式声明

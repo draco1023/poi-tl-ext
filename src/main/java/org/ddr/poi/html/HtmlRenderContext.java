@@ -737,7 +737,6 @@ public class HtmlRenderContext extends RenderContext<String> {
 
         StringBuilder sb = StringUtil.borrowBuilder();
         boolean mergeWhitespace = false;
-        boolean reachedNonWhite = false;
 
         // https://en.wikipedia.org/wiki/List_of_XML_and_HTML_character_entity_references
         int len = text.length();
@@ -837,7 +836,6 @@ public class HtmlRenderContext extends RenderContext<String> {
                         sb.append(' ');
                         mergeWhitespace = false;
                     }
-                    reachedNonWhite = true;
                     sb.append(' ');
                     break;
                 case 173: // soft hyphen
@@ -856,13 +854,10 @@ public class HtmlRenderContext extends RenderContext<String> {
                         continue;
                     }
                     if (mergeWhitespace) {
-                        if (reachedNonWhite) {
-                            sb.append(' ');
-                        }
+                        sb.append(' ');
                         mergeWhitespace = false;
                     }
                     sb.appendCodePoint(c);
-                    reachedNonWhite = true;
                     if (previousText != null && previousText.isEndTrimmed()) {
                         CTText previous = previousText.getText();
                         previous.setStringValue(previous.getStringValue() + ' ');
@@ -1242,7 +1237,7 @@ public class HtmlRenderContext extends RenderContext<String> {
         if (log.isDebugEnabled()) {
             log.info("Start rendering html tag: <{}{}>", element.normalName(), element.attributes());
         }
-        if (element.tag().isFormListed()) {
+        if (element.tag().isFormListed() || element.tag().isFormSubmittable()) {
             return;
         }
 
