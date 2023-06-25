@@ -39,7 +39,7 @@ public class HeaderBreakRenderer implements ElementRenderer {
     /**
      * 线粗细，相当于3px
      */
-    private static final BigInteger SIZE = BigInteger.valueOf(12);
+    private static final BigInteger SIZE = BigInteger.valueOf(6);
     /**
      * 间距
      */
@@ -60,7 +60,11 @@ public class HeaderBreakRenderer implements ElementRenderer {
         ctBorder.setVal(STBorder.SINGLE);
         ctBorder.setSz(SIZE);
         ctBorder.setSpace(SPACE);
-//        ctBorder.setColor("auto");
+
+        ctBorder = pBdr.addNewBetween();
+        ctBorder.setVal(STBorder.SINGLE);
+        ctBorder.setSz(SIZE);
+        ctBorder.setSpace(SPACE);
         return false;
     }
 
