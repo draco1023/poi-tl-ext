@@ -50,3 +50,6 @@ poi 5.x poi-tl 1.11.0+
 
 - 支持渲染`MathML`字符串，插件类为`MathMLRenderPolicy`
 - 支持渲染`LaTeX`字符串，插件类为`LaTeXRenderPolicy`
+
+## 支持我
+如果您觉得这个插件节省了您的时间和精力，或者解决了您的难题，可以考虑支持一下我的工作，感谢！ ⚡⚡⚡ https://afdian.net/a/poi-tl-ext
