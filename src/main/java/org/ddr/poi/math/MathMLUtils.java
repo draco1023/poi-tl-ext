@@ -23,13 +23,12 @@ import net.sf.saxon.s9api.Xslt30Transformer;
 import net.sf.saxon.s9api.XsltCompiler;
 import net.sf.saxon.s9api.XsltExecutable;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
-import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.apache.xmlbeans.XmlCursor;
 import org.apache.xmlbeans.XmlException;
 import org.openxmlformats.schemas.officeDocument.x2006.math.CTOMath;
-import org.openxmlformats.schemas.officeDocument.x2006.math.CTR;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTFonts;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTP;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,10 +54,10 @@ public class MathMLUtils {
      * 将MathML渲染到段落中
      *
      * @param paragraph 段落
-     * @param run 占位符所属run，如果总是在末尾渲染可传null
+     * @param ctr 占位符所属run，如果总是在末尾渲染可传null
      * @param math MathML字符串
      */
-    public static void renderTo(XWPFParagraph paragraph, XWPFRun run, String math) {
+    public static void renderTo(XWPFParagraph paragraph, CTR ctr, String math) {
         if (log.isDebugEnabled()) {
             log.info("Start rendering MathML: {}", math);
         }
@@ -72,7 +71,7 @@ public class MathMLUtils {
             if (log.isDebugEnabled()) {
                 log.info("Output OMath: {}", omath);
             }
-            addMath(paragraph, run, omath);
+            addMath(paragraph, ctr, omath);
         } catch (IOException | SaxonApiException | XmlException e) {
             log.warn("Failed to render math: {}", math, e);
         }
@@ -109,10 +108,10 @@ public class MathMLUtils {
      * 添加公式到Word
      *
      * @param paragraph 段落
-     * @param run 占位符所属run，如果总是在末尾渲染可传null
+     * @param ctr 占位符所属run，如果总是在末尾渲染可传null
      * @param omath 由mathml转换得到的omath字符串
      */
-    private static void addMath(XWPFParagraph paragraph, XWPFRun run, String omath) throws XmlException {
+    private static void addMath(XWPFParagraph paragraph, CTR ctr, String omath) throws XmlException {
         CTOMath ctoMath = CTOMath.Factory.parse(omath);
         // 老版本Office可能无法正常显示，强制设置公式字体
         XmlCursor xmlCursor = ctoMath.newCursor();
@@ -120,7 +119,7 @@ public class MathMLUtils {
             XmlCursor.TokenType tokenType = xmlCursor.toNextToken();
             if (tokenType == XmlCursor.TokenType.START) {
                 if (xmlCursor.getObject() instanceof CTR) {
-                    CTFonts ctFonts = ((CTR) xmlCursor.getObject()).addNewRPr2().addNewRFonts();
+                    CTFonts ctFonts = ((org.openxmlformats.schemas.officeDocument.x2006.math.CTR) xmlCursor.getObject()).addNewRPr2().addNewRFonts();
                     ctFonts.setAscii(MATH_FONT);
                     ctFonts.setEastAsia(MATH_FONT);
                     ctFonts.setHAnsi(MATH_FONT);
@@ -132,18 +131,17 @@ public class MathMLUtils {
 
         CTP ctp = paragraph.getCTP();
 
-        if (run == null) {
+        if (ctr == null) {
             ctp.addNewOMath();
             ctp.setOMathArray(ctp.sizeOfOMathArray() - 1, ctoMath.getOMathArray(0));
             return;
         }
 
-        insertMathAfterRun(ctp, run, ctoMath);
+        insertMathAfterRun(ctp, ctr, ctoMath);
     }
 
-    private static void insertMathAfterRun(CTP ctp, XWPFRun run, CTOMath ctoMath) {
+    private static void insertMathAfterRun(CTP ctp, CTR ctr, CTOMath ctoMath) {
         XmlCursor xmlCursor;
-        org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR ctr = run.getCTR();
         int oMathIndex = 0;
         boolean foundCTR = false;
         xmlCursor = ctp.newCursor();

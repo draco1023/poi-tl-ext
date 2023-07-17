@@ -21,6 +21,7 @@ class LaTeXRenderPolicyTest {
                 .bind("math4", laTeXRenderPolicy)
                 .build();
         Map<String, Object> data = new HashMap<>(4);
+        // https://www2.ph.ed.ac.uk/snuggletex/documentation/math-mode.html
         data.put("math1", "$$ x+2=3 $$");
         data.put("math2", "\\[ \\sum_{i=1}^{\\infty} \\frac{1}{n^s} \n" +
                 "= \\prod_p \\frac{1}{1 - p^{-s}} \\]");

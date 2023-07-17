@@ -5,6 +5,7 @@ import com.deepoove.poi.render.RenderContext;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.ddr.poi.math.MathMLUtils;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.w3c.dom.Text;
@@ -47,17 +48,19 @@ public class LaTeXRenderPolicy extends AbstractRenderPolicy<String> {
     @Override
     public void doRender(RenderContext<String> context) throws Exception {
         XWPFParagraph paragraph = (XWPFParagraph) context.getRun().getParent();
+        CTR ctr = context.getRun().getCTR();
         NodeList nodeList = session.buildDOMSubtree();
         int length = nodeList.getLength();
         for (int i = 0; i < length; i++) {
             Node node = nodeList.item(i);
             if (node instanceof Text) {
-                paragraph.getCTP().addNewR().addNewT().setStringValue(node.getTextContent());
+                ctr = paragraph.getCTP().addNewR();
+                ctr.addNewT().setStringValue(node.getTextContent());
             } else if ("math".equals(node.getLocalName())) {
                 String math = XMLUtilities.serializeNode(node,
                         Initializer.SNUGGLE_ENGINE.getDefaultXMLStringOutputOptions());
 
-                MathMLUtils.renderTo(paragraph, context.getRun(), math);
+                MathMLUtils.renderTo(paragraph, ctr, math);
             }
         }
     }
