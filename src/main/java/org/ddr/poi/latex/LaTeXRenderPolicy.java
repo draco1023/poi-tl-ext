@@ -4,19 +4,8 @@ import com.deepoove.poi.policy.AbstractRenderPolicy;
 import com.deepoove.poi.render.RenderContext;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
-import org.ddr.poi.math.MathMLUtils;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.w3c.dom.Text;
-import uk.ac.ed.ph.snuggletex.SnuggleEngine;
-import uk.ac.ed.ph.snuggletex.SnuggleInput;
 import uk.ac.ed.ph.snuggletex.SnuggleSession;
-import uk.ac.ed.ph.snuggletex.definitions.CorePackageDefinitions;
-import uk.ac.ed.ph.snuggletex.internal.util.XMLUtilities;
-import uk.ac.ed.ph.snuggletex.utilities.DefaultTransformerFactoryChooser;
-
-import java.io.IOException;
 
 /**
  * LaTeX字符串渲染策略
@@ -34,43 +23,15 @@ public class LaTeXRenderPolicy extends AbstractRenderPolicy<String> {
         }
 
         // https://www2.ph.ed.ac.uk/snuggletex/documentation/overview-and-features.html
-        session = Initializer.SNUGGLE_ENGINE.createSession();
-        SnuggleInput input = new SnuggleInput(data);
-        boolean valid = false;
-        try {
-            valid = session.parseInput(input);
-        } catch (IOException ignored) {
-            // Will never throw an exception since input is raw string
-        }
-        return valid;
+        session = LaTeXUtils.createSession();
+        return LaTeXUtils.parse(session, data);
     }
 
     @Override
     public void doRender(RenderContext<String> context) throws Exception {
         XWPFParagraph paragraph = (XWPFParagraph) context.getRun().getParent();
         CTR ctr = context.getRun().getCTR();
-        NodeList nodeList = session.buildDOMSubtree();
-        int length = nodeList.getLength();
-        for (int i = 0; i < length; i++) {
-            Node node = nodeList.item(i);
-            if (node instanceof Text) {
-                ctr = paragraph.getCTP().addNewR();
-                ctr.addNewT().setStringValue(node.getTextContent());
-            } else if ("math".equals(node.getLocalName())) {
-                String math = XMLUtilities.serializeNode(node,
-                        Initializer.SNUGGLE_ENGINE.getDefaultXMLStringOutputOptions());
-
-                MathMLUtils.renderTo(paragraph, ctr, math);
-            }
-        }
-    }
-
-    private static class Initializer {
-        static final SnuggleEngine SNUGGLE_ENGINE = new SnuggleEngine(DefaultTransformerFactoryChooser.getInstance(), null);
-
-        static {
-            CorePackageDefinitions.getPackage().loadMathCharacterAliases("math-character-aliases.txt");
-        }
+        LaTeXUtils.renderTo(paragraph, ctr, session);
     }
 
     @Override
