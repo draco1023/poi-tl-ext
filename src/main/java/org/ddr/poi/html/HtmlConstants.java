@@ -91,6 +91,7 @@ public interface HtmlConstants {
     String TAG_FIGURE_CAPTION = "figcaption";
     String TAG_PRE = "pre";
     String TAG_XMP = "xmp";
+    String TAG_LATEX = "latex";
 
     String ATTR_STYLE = "style";
     String ATTR_SRC = "src";

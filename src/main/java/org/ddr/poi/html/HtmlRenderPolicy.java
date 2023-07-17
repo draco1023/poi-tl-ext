@@ -38,6 +38,7 @@ import org.ddr.poi.html.tag.HeaderBreakRenderer;
 import org.ddr.poi.html.tag.HeaderRenderer;
 import org.ddr.poi.html.tag.ImageRenderer;
 import org.ddr.poi.html.tag.ItalicRenderer;
+import org.ddr.poi.html.tag.LaTeXRenderer;
 import org.ddr.poi.html.tag.ListItemRenderer;
 import org.ddr.poi.html.tag.ListRenderer;
 import org.ddr.poi.html.tag.MarkRenderer;
@@ -99,6 +100,7 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
                 new HeaderRenderer(),
                 new ImageRenderer(),
                 new ItalicRenderer(),
+                new LaTeXRenderer(),
                 new ListItemRenderer(),
                 new ListRenderer(),
                 new MarkRenderer(),
