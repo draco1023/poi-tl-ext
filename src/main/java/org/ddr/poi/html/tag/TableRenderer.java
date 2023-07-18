@@ -196,14 +196,17 @@ public class TableRenderer implements ElementRenderer {
 
             for (Iterator<Map.Entry<Integer, Span>> iterator = rowSpanMap.entrySet().iterator(); iterator.hasNext(); ) {
                 Map.Entry<Integer, Span> entry = iterator.next();
-                entry.getValue().setRow(entry.getValue().getRow() - minRowSpan);
-                if (entry.getValue().getRow() == 0) {
+                Integer spanColumnIndex = entry.getKey();
+                Span span = entry.getValue();
+                span.setRow(span.getRow() - minRowSpan);
+                if (span.getRow() == 0) {
                     iterator.remove();
                 } else {
-                    entry.getValue().setEnabled(true);
+                    span.setEnabled(true);
                 }
-                if (columnIndex < colWidthMap.size()) {
-                    addVMergeCell(row, columnIndex++, entry.getValue());
+                if (columnIndex <= spanColumnIndex && columnIndex < colWidthMap.size()) {
+                    addVMergeCell(row, columnIndex, span);
+                    columnIndex += span.getColumn();
                 }
             }
         }
