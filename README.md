@@ -9,7 +9,7 @@ poi 4.x poi-tl 1.11 以前的版本
 <dependency>
     <groupId>io.github.draco1023</groupId>
     <artifactId>poi-tl-ext</artifactId>
-    <version>0.4.3</version>
+    <version>0.4.4</version>
 </dependency>
 ```
 
@@ -19,7 +19,7 @@ poi 5.x poi-tl 1.11.0+
 <dependency>
     <groupId>io.github.draco1023</groupId>
     <artifactId>poi-tl-ext</artifactId>
-    <version>0.4.3-poi5</version>
+    <version>0.4.4-poi5</version>
 </dependency>
 ```
 
@@ -42,9 +42,11 @@ poi 5.x poi-tl 1.11.0+
   `HtmlRenderPolicy`可以通过`HtmlRenderConfig`进行如下设置：
   - `globalFont` 全局默认字体（用于归一化处理，而不是用于样式兜底）
   - `globalFontSize` 全局默认字号（用于归一化处理，而不是用于样式兜底）
-  - `showDefaultTableBorderInTableCell` 是否显示嵌套表格的边框（`poi`生成嵌套表格时默认不显示边框，见#12）
+  - `showDefaultTableBorderInTableCell` 是否显示嵌套表格的边框（`poi`生成嵌套表格时默认不显示边框，见[#12](https://github.com/draco1023/poi-tl-ext/issues/12)）
   - `numberingIndent` 多级列表项缩进长度，默认值360
   - `numberingSpacing` 列表编号与内容之间的间隔类型，`STLevelSuffix.NOTHING`/`STLevelSuffix.SPACE`/`STLevelSuffix.TAB`
+  
+  自定义`<latex>`标签，允许渲染嵌入在`HTML`中的`LaTeX`，字符串格式可参考[文档](https://www2.ph.ed.ac.uk/snuggletex/documentation/supported-latex.html)。
   
   _目前实现了富文本编辑器可实现的大部分效果，后续继续改进..._
 
