@@ -35,6 +35,7 @@ import org.ddr.poi.html.util.JsoupUtils;
 import org.ddr.poi.html.util.RenderUtils;
 import org.ddr.poi.html.util.Span;
 import org.ddr.poi.html.util.SpanWidth;
+import org.ddr.poi.html.util.WhiteSpaceRule;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
 import org.jsoup.select.Elements;
@@ -52,6 +53,7 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.STTblWidth;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -89,6 +91,12 @@ public class TableRenderer implements ElementRenderer {
     @Override
     public boolean renderStart(Element element, HtmlRenderContext context) {
         CSSStyleDeclarationImpl styleDeclaration = context.currentElementStyle();
+
+        WhiteSpaceRule tableWhiteSpace = WhiteSpaceRule.of(styleDeclaration.getWhiteSpace(), WhiteSpaceRule.NORMAL);
+        styleDeclaration.setWhiteSpace(HtmlConstants.NORMAL);
+        Map<Element, WhiteSpaceRule> whiteSpaceMap = new HashMap<>();
+        whiteSpaceMap.put(element, tableWhiteSpace);
+
         String widthDeclaration = styleDeclaration.getWidth();
 
         XWPFTable table = context.getClosestTable();
@@ -101,7 +109,7 @@ public class TableRenderer implements ElementRenderer {
 
         Element caption = JsoupUtils.firstChild(element, HtmlConstants.TAG_CAPTION);
         if (caption != null) {
-            renderCaption(context, table, caption);
+            renderCaption(context, table, caption, tableWhiteSpace);
         }
 
         Element colgroup = JsoupUtils.firstChild(element, HtmlConstants.TAG_COLGROUP);
@@ -138,6 +146,37 @@ public class TableRenderer implements ElementRenderer {
                 td.attr(HtmlConstants.ATTR_ROW_INDEX, String.valueOf(r));
                 td.attr(HtmlConstants.ATTR_COLUMN_INDEX, String.valueOf(c + vMergeCount));
 
+                WhiteSpaceRule tdWhiteSpace = null;
+                Element parent = td.parent();
+                while (true) {
+                    if (parent == element) {
+                        if (tdWhiteSpace == null) {
+                            tdWhiteSpace = tableWhiteSpace;
+                        }
+                        break;
+                    }
+                    WhiteSpaceRule parentWhiteSpace = whiteSpaceMap.get(parent);
+                    if (!whiteSpaceMap.containsKey(parent)) {
+                        CSSStyleDeclarationImpl parentStyle = context.getCssStyleDeclaration(parent);
+                        String parentRule = parentStyle.removeProperty(HtmlConstants.CSS_WHITE_SPACE);
+                        parentWhiteSpace = WhiteSpaceRule.of(parentRule);
+                        whiteSpaceMap.put(parent, parentWhiteSpace);
+                        if (parentWhiteSpace != null) {
+                            parent.attr(HtmlConstants.ATTR_STYLE, parentStyle.getCssText());
+                        }
+                    }
+                    if (parentWhiteSpace != null && tdWhiteSpace == null) {
+                        tdWhiteSpace = parentWhiteSpace;
+                    }
+                    parent = parent.parent();
+                }
+
+                if (!tdWhiteSpace.isNormal()) {
+                    td.attr(HtmlConstants.ATTR_STYLE, HtmlConstants.CSS_WHITE_SPACE
+                            + HtmlConstants.COLON + tdWhiteSpace.getValue() + HtmlConstants.SEMICOLON
+                            + td.attr(HtmlConstants.ATTR_STYLE));
+                }
+
                 // 列定义的样式与单元格的样式合并
                 if (!columnStyles.isEmpty() && columnIndex < columnStyles.size()) {
                     String colStyle = columnStyles.get(columnIndex).getStyle().getCssText();
@@ -158,7 +197,7 @@ public class TableRenderer implements ElementRenderer {
                     }
                 }
 
-                CSSStyleDeclarationImpl tdStyleDeclaration = CSSStyleUtils.parseNew(td.attr(HtmlConstants.ATTR_STYLE));
+                CSSStyleDeclarationImpl tdStyleDeclaration = CSSStyleUtils.parse(td.attr(HtmlConstants.ATTR_STYLE));
                 CSSLength tdWidth = CSSLength.of(tdStyleDeclaration.getWidth());
 
                 // 必须晚于之前列的行合并单元格创建
@@ -355,13 +394,13 @@ public class TableRenderer implements ElementRenderer {
      * @param context 渲染上下文
      * @param table 表格
      * @param caption 标题元素
+     * @param whiteSpace table标签上的white-space样式
      */
-    private void renderCaption(HtmlRenderContext context, XWPFTable table, Element caption) {
+    private void renderCaption(HtmlRenderContext context, XWPFTable table, Element caption, WhiteSpaceRule whiteSpace) {
         CSSStyleDeclarationImpl captionStyle = context.getCssStyleDeclaration(caption);
-        if (CSSStyleUtils.EMPTY_STYLE == captionStyle) {
-            captionStyle = defaultCaptionStyle;
-        } else {
-            captionStyle.getProperties().addAll(0, defaultCaptionStyle.getProperties());
+        captionStyle.getProperties().addAll(0, defaultCaptionStyle.getProperties());
+        if (whiteSpace != null) {
+            captionStyle.getProperties().add(0, CSSStyleUtils.newProperty(HtmlConstants.CSS_WHITE_SPACE, whiteSpace.getValue()));
         }
         context.pushInlineStyle(captionStyle, caption.isBlock());
         XWPFParagraph captionParagraph;

@@ -48,32 +48,20 @@ public class CSSStyleUtils {
     }
 
     /**
-     * 解析行内样式，解析失败时返回默认空样式
+     * 解析行内样式
      *
      * @param inlineStyle 行内样式声明
      * @return 样式
      */
     public static CSSStyleDeclarationImpl parse(String inlineStyle) {
+        if (StringUtils.isBlank(inlineStyle)) {
+            return new CSSStyleDeclarationImpl();
+        }
         try (StringReader sr = new StringReader(inlineStyle)) {
             return (CSSStyleDeclarationImpl) newParser().parseStyleDeclaration(new InputSource(sr));
         } catch (IOException e) {
             log.warn("Inline style parse error: {}", inlineStyle, e);
             return EMPTY_STYLE;
-        }
-    }
-
-    /**
-     * 解析行内样式，解析失败时返回新的空样式实例
-     *
-     * @param inlineStyle 行内样式声明
-     * @return 样式
-     */
-    public static CSSStyleDeclarationImpl parseNew(String inlineStyle) {
-        try (StringReader sr = new StringReader(inlineStyle)) {
-            return (CSSStyleDeclarationImpl) newParser().parseStyleDeclaration(new InputSource(sr));
-        } catch (IOException e) {
-            log.warn("Inline style parse error: {}", inlineStyle, e);
-            return new CSSStyleDeclarationImpl();
         }
     }
 

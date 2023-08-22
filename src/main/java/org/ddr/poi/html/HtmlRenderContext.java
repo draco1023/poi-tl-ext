@@ -733,7 +733,7 @@ public class HtmlRenderContext extends RenderContext<String> {
      */
     public void renderText(String text) {
         String whiteSpace = getPropertyValue(HtmlConstants.CSS_WHITE_SPACE);
-        WhiteSpaceRule rule = WhiteSpaceRule.of(whiteSpace);
+        WhiteSpaceRule rule = WhiteSpaceRule.of(whiteSpace, WhiteSpaceRule.NORMAL);
 
         StringBuilder sb = StringUtil.borrowBuilder();
         boolean mergeWhitespace = false;
@@ -1253,6 +1253,7 @@ public class HtmlRenderContext extends RenderContext<String> {
 
         if (renderAsBlock(element, elementRenderer)) {
             if (element.childNodeSize() == 0 && !HtmlConstants.KEEP_EMPTY_TAGS.contains(element.normalName())) {
+                popInlineStyle();
                 return;
             }
             if (!isBlocked()) {
