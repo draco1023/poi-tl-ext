@@ -65,11 +65,19 @@ public enum WhiteSpaceRule {
         return keepTrailingSpace;
     }
 
+    public boolean isNormal() {
+        return this == NORMAL || this == NO_WRAP;
+    }
+
     private static Map<String, WhiteSpaceRule> rules = Arrays.stream(values()).collect(
             Collectors.toMap(WhiteSpaceRule::getValue, Function.identity())
     );
 
     public static WhiteSpaceRule of(String value) {
-        return rules.getOrDefault(value, WhiteSpaceRule.NORMAL);
+        return rules.get(value);
+    }
+
+    public static WhiteSpaceRule of(String value, WhiteSpaceRule defaultRule) {
+        return rules.getOrDefault(value, defaultRule);
     }
 }
