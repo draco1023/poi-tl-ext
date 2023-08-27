@@ -392,7 +392,7 @@ public class HtmlRenderContext extends RenderContext<String> {
             XWPFParagraph paragraph = getClosestParagraph();
             currentRun = paragraph.createHyperlinkRun(uri);
             if (dedupeParagraph == paragraph) {
-                dedupeParagraph = null;
+                unmarkDedupe();
             }
         } else {
             // 在占位符之前插入超链接
@@ -431,6 +431,7 @@ public class HtmlRenderContext extends RenderContext<String> {
         if (placeholderStyleId != null) {
             xwpfParagraph.setStyle(placeholderStyleId);
         }
+        markDedupe(xwpfParagraph);
         previousText = null;
         return xwpfParagraph;
     }
@@ -462,7 +463,7 @@ public class HtmlRenderContext extends RenderContext<String> {
             XWPFParagraph paragraph = getClosestParagraph();
             currentRun = paragraph.createRun();
             if (dedupeParagraph == paragraph) {
-                dedupeParagraph = null;
+                unmarkDedupe();
             }
         } else {
             // 在占位符之前插入run
@@ -1274,7 +1275,7 @@ public class HtmlRenderContext extends RenderContext<String> {
                 globalCursor.pop();
                 if (dedupeParagraph != null) {
                     removeParagraph(container, dedupeParagraph);
-                    dedupeParagraph = null;
+                    unmarkDedupe();
                 }
                 // 新增时会自动创建一行一列，会影响自定义的表格渲染逻辑，故删除
                 xwpfTable.removeRow(0);
