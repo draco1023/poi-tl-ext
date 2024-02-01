@@ -27,6 +27,7 @@ import org.apache.poi.xwpf.usermodel.SVGPictureData;
 import org.ddr.poi.html.ElementRenderer;
 import org.ddr.poi.html.HtmlConstants;
 import org.ddr.poi.html.HtmlRenderContext;
+import org.ddr.poi.html.util.CSSLength;
 import org.ddr.poi.util.ByteArrayCopyStream;
 import org.ddr.poi.util.HttpURLConnectionUtils;
 import org.jsoup.nodes.Element;
@@ -251,53 +252,84 @@ public class ImageRenderer implements ElementRenderer {
         // 图片原始宽高
         int widthInEMU = Units.pixelToEMU(widthInPixels);
         int heightInEMU = Units.pixelToEMU(heightInPixels);
+        float naturalAspect = 1f * widthInEMU / heightInEMU;
 
-        boolean declaredWidth = false;
-        boolean declaredHeight = false;
+        int declaredWidth = widthInEMU;
+        int declaredHeight = heightInEMU;
+        int maxWidthInEMU = containerWidth;
+        int maxHeightInEMU = Integer.MAX_VALUE;
 
         String width = context.getPropertyValue(HtmlConstants.CSS_WIDTH);
         if (width.length() > 0) {
-            declaredWidth = true;
+            CSSLength cssLength = CSSLength.of(width);
+            if (cssLength.isValid()) {
+                declaredWidth = context.computeLengthInEMU(cssLength, widthInEMU, containerWidth);
+            }
         } else {
             // width attribute is overridden by style, the same to height
             // https://css-tricks.com/whats-the-difference-between-width-height-in-css-and-width-height-html-attributes/
             width = element.attr(HtmlConstants.ATTR_WIDTH);
             if (NumberUtils.isParsable(width)) {
                 width += HtmlConstants.PX;
-                declaredWidth = true;
+                CSSLength cssLength = CSSLength.of(width);
+                declaredWidth = context.computeLengthInEMU(cssLength, widthInEMU, containerWidth);
             }
         }
 
+
         String maxWidth = context.getPropertyValue(HtmlConstants.CSS_MAX_WIDTH);
-        widthInEMU = context.computeLengthInEMU(width, maxWidth, widthInEMU, containerWidth);
+        if (maxWidth.length() > 0) {
+            CSSLength cssLength = CSSLength.of(maxWidth);
+            if (cssLength.isValid()) {
+                // restrained by container
+                maxWidthInEMU = Math.min(context.computeLengthInEMU(cssLength, widthInEMU, containerWidth), containerWidth);
+            }
+        }
 
         String height = context.getPropertyValue(HtmlConstants.CSS_HEIGHT);
         if (height.length() > 0) {
-            declaredHeight = true;
+            CSSLength cssLength = CSSLength.of(height);
+            if (cssLength.isValid()) {
+                declaredHeight = context.computeLengthInEMU(cssLength, heightInEMU, Integer.MAX_VALUE);
+            }
         } else {
             height = element.attr(HtmlConstants.ATTR_HEIGHT);
             if (NumberUtils.isParsable(height)) {
                 height += HtmlConstants.PX;
-                declaredHeight = true;
+                CSSLength cssLength = CSSLength.of(height);
+                declaredHeight = context.computeLengthInEMU(cssLength, heightInEMU, Integer.MAX_VALUE);
             }
         }
 
         String maxHeight = context.getPropertyValue(HtmlConstants.CSS_MAX_HEIGHT);
-        heightInEMU = context.computeLengthInEMU(height, maxHeight, heightInEMU, Integer.MAX_VALUE);
-
-        // 除非同时声明了宽和高，否则同比计算对应尺寸
-        if (!declaredHeight) {
-            heightInEMU = (int) (heightInPixels * (long) widthInEMU / widthInPixels);
-        } else if (!declaredWidth) {
-            widthInEMU = (int) (widthInPixels * (long) heightInEMU / heightInPixels);
-            if (widthInEMU > containerWidth) {
-                widthInEMU = containerWidth;
-                heightInEMU = (int) (heightInPixels * (long) widthInEMU / widthInPixels);
+        if (maxHeight.length() > 0) {
+            CSSLength cssLength = CSSLength.of(maxHeight);
+            if (cssLength.isValid()) {
+                maxHeightInEMU = context.computeLengthInEMU(cssLength, heightInEMU, Integer.MAX_VALUE);
             }
         }
 
+        // 计算尺寸
+        int calculatedWidth, calculatedHeight;
+        if (declaredWidth < maxWidthInEMU && declaredHeight <= maxHeightInEMU) {
+            calculatedWidth = declaredWidth;
+            calculatedHeight = declaredHeight;
+        } else if (declaredWidth > maxWidthInEMU && declaredHeight <= maxHeightInEMU) {
+            calculatedWidth = maxWidthInEMU;
+            calculatedHeight = (int) (maxWidthInEMU / naturalAspect);
+        } else if (declaredHeight > maxHeightInEMU && declaredWidth <= maxWidthInEMU) {
+            calculatedHeight = maxHeightInEMU;
+            calculatedWidth = (int) (maxHeightInEMU * naturalAspect);
+        } else {
+            float widthRatio = 1f * maxWidthInEMU / declaredWidth;
+            float heightRatio = 1f * maxHeightInEMU / declaredHeight;
+            float scale = Math.min(widthRatio, heightRatio);
+            calculatedWidth = (int) (declaredWidth * scale);
+            calculatedHeight = (int) (declaredHeight * scale);
+        }
+
         context.renderPicture(inputStream, type, HtmlConstants.TAG_IMG,
-                widthInEMU, heightInEMU, svgData);
+            calculatedWidth, calculatedHeight, svgData);
     }
 
 }

@@ -9,7 +9,7 @@ poi 4.x poi-tl 1.11 以前的版本
 <dependency>
     <groupId>io.github.draco1023</groupId>
     <artifactId>poi-tl-ext</artifactId>
-    <version>0.4.8</version>
+    <version>0.4.9</version>
 </dependency>
 ```
 
@@ -19,7 +19,7 @@ poi 5.x poi-tl 1.11.0+
 <dependency>
     <groupId>io.github.draco1023</groupId>
     <artifactId>poi-tl-ext</artifactId>
-    <version>0.4.8-poi5</version>
+    <version>0.4.9-poi5</version>
 </dependency>
 ```
 
