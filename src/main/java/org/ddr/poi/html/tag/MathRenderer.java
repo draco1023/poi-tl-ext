@@ -16,11 +16,15 @@
 
 package org.ddr.poi.html.tag;
 
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.ddr.poi.html.ElementRenderer;
 import org.ddr.poi.html.HtmlConstants;
 import org.ddr.poi.html.HtmlRenderContext;
 import org.ddr.poi.math.MathMLUtils;
 import org.jsoup.nodes.Element;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * math标签渲染器
@@ -30,6 +34,8 @@ import org.jsoup.nodes.Element;
  */
 public class MathRenderer implements ElementRenderer {
     private static final String[] TAGS = {HtmlConstants.TAG_MATH};
+
+    private static final Pattern ESCAPED = Pattern.compile("&[^#0-9]+?;");
 
     /**
      * 开始渲染
@@ -41,7 +47,14 @@ public class MathRenderer implements ElementRenderer {
     @Override
     public boolean renderStart(Element element, HtmlRenderContext context) {
         String math = element.outerHtml();
-
+        Matcher matcher = ESCAPED.matcher(math);
+        StringBuffer buffer = new StringBuffer();
+        while (matcher.find()) {
+            int codePoint = StringEscapeUtils.unescapeHtml4(matcher.group()).codePointAt(0);
+            matcher.appendReplacement(buffer, "&#" + codePoint + ";");
+        }
+        matcher.appendTail(buffer);
+        math = buffer.toString();
         MathMLUtils.renderTo(context.getClosestParagraph(), null, math);
 
         return false;
