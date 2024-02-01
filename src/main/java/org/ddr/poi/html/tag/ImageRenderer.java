@@ -67,7 +67,7 @@ public class ImageRenderer implements ElementRenderer {
         SVGPictureData.initRelation();
     }
 
-    enum ImageType {
+    protected enum ImageType {
         EMF(Document.PICTURE_TYPE_EMF),
         WMF(Document.PICTURE_TYPE_WMF),
         PICT(Document.PICTURE_TYPE_PICT),
@@ -188,27 +188,22 @@ public class ImageRenderer implements ElementRenderer {
             InputStream urlStream = connect.getInputStream();
             boolean svg = connect.getHeaderField("content-type").contains(HtmlConstants.TAG_SVG);
             byte[] svgData = null;
+            outputStream = new ByteArrayCopyStream(urlStream.available());
+            IOUtils.copy(urlStream, outputStream);
             if (svg) {
-                outputStream = new ByteArrayCopyStream(urlStream.available());
-                IOUtils.copy(urlStream, outputStream);
                 svgData = outputStream.toByteArray();
-                image = ImageIO.read(outputStream.toInput());
-            } else {
-                image = ImageIO.read(urlStream);
             }
+            image = ImageIO.read(outputStream.toInput());
 
             if (image == null) {
                 log.warn("Illegal image url: {}", src);
                 return;
             }
-            int size = image.getData().getDataBuffer().getSize();
-            outputStream = new ByteArrayCopyStream(size);
 
             if (type == null) {
                 type = typeOf(image);
             }
 
-            ImageIO.write(image, type.getExtension(), outputStream);
             inputStream = outputStream.toInput();
             addPicture(element, context, inputStream, type.getType(), image.getWidth(), image.getHeight(), svgData);
         } catch (IOException | InvalidFormatException e) {
