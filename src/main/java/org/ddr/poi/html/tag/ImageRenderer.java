@@ -28,6 +28,7 @@ import org.ddr.poi.html.ElementRenderer;
 import org.ddr.poi.html.HtmlConstants;
 import org.ddr.poi.html.HtmlRenderContext;
 import org.ddr.poi.html.util.CSSLength;
+import org.ddr.poi.math.MathMLUtils;
 import org.ddr.poi.util.ByteArrayCopyStream;
 import org.ddr.poi.util.HttpURLConnectionUtils;
 import org.jsoup.nodes.Element;
@@ -61,6 +62,8 @@ public class ImageRenderer implements ElementRenderer {
     private static final String DOUBLE_SLASH = "//";
     private static final String DATA_PREFIX = "data:";
     private static final Map<String, ImageType> PICTURE_TYPES = new HashMap<>(ImageType.values().length);
+    private static final String COMMENT_MATH_PREFIX = "<!--MathML: <math ";
+    private static final String COMMENT_MATH_SUFFIX = "</math>-->";
 
     static {
         for (ImageType type : ImageType.values()) {
@@ -156,6 +159,20 @@ public class ImageRenderer implements ElementRenderer {
                     return;
                 }
             }
+
+            // wiris support
+            int startOfMath = data.indexOf(COMMENT_MATH_PREFIX);
+            if (startOfMath >= 0) {
+                try {
+                    int endOfMath = data.indexOf(COMMENT_MATH_SUFFIX, startOfMath + COMMENT_MATH_PREFIX.length());
+                    String math = data.substring(startOfMath + 12, endOfMath + 7);
+                    MathMLUtils.renderTo(context.getClosestParagraph(), context.newRun(), math);
+                    return;
+                } catch (Exception e) {
+                    log.warn("Failed to render math in wiris svg, will try to render as svg image: {}", data, e);
+                }
+            }
+
             bytes = data.getBytes(StandardCharsets.UTF_8);
         }
         BufferedImage image;

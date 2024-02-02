@@ -22,6 +22,7 @@ import net.sf.saxon.s9api.Serializer;
 import net.sf.saxon.s9api.Xslt30Transformer;
 import net.sf.saxon.s9api.XsltCompiler;
 import net.sf.saxon.s9api.XsltExecutable;
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.xmlbeans.XmlCursor;
 import org.apache.xmlbeans.XmlException;
@@ -38,6 +39,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * MathML工具类
@@ -49,6 +55,10 @@ public class MathMLUtils {
     private static final Logger log = LoggerFactory.getLogger(MathMLUtils.class);
     private static final String MATH_FONT = "Cambria Math";
     private static final QName OMATH_QNAME = new QName("http://schemas.openxmlformats.org/officeDocument/2006/math", "oMath");
+
+    private static final Pattern ESCAPED = Pattern.compile("&[a-zA-Z]+;");
+
+    private static final Set<String> PREDEFINED = new HashSet<>(Arrays.asList("&amp;", "&lt;", "&gt;", "&quot;", "&apos;"));
 
     /**
      * 将MathML渲染到段落中
@@ -75,6 +85,25 @@ public class MathMLUtils {
         } catch (IOException | SaxonApiException | XmlException e) {
             log.warn("Failed to render math: {}", math, e);
         }
+    }
+
+    /**
+     * 将html实体符号转换为xml形式
+     */
+    public static String normalize(String math) {
+        Matcher matcher = ESCAPED.matcher(math);
+        StringBuffer buffer = new StringBuffer();
+        while (matcher.find()) {
+            String entity = matcher.group();
+            if (PREDEFINED.contains(entity)) {
+                continue;
+            }
+            int codePoint = StringEscapeUtils.unescapeHtml4(entity).codePointAt(0);
+            matcher.appendReplacement(buffer, "&#" + codePoint + ";");
+        }
+        matcher.appendTail(buffer);
+        math = buffer.toString();
+        return math;
     }
 
     /**
