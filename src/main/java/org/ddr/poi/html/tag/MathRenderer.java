@@ -35,8 +35,6 @@ import java.util.regex.Pattern;
 public class MathRenderer implements ElementRenderer {
     private static final String[] TAGS = {HtmlConstants.TAG_MATH};
 
-    private static final Pattern ESCAPED = Pattern.compile("&[^#0-9]+?;");
-
     /**
      * 开始渲染
      *
@@ -47,15 +45,8 @@ public class MathRenderer implements ElementRenderer {
     @Override
     public boolean renderStart(Element element, HtmlRenderContext context) {
         String math = element.outerHtml();
-        Matcher matcher = ESCAPED.matcher(math);
-        StringBuffer buffer = new StringBuffer();
-        while (matcher.find()) {
-            int codePoint = StringEscapeUtils.unescapeHtml4(matcher.group()).codePointAt(0);
-            matcher.appendReplacement(buffer, "&#" + codePoint + ";");
-        }
-        matcher.appendTail(buffer);
-        math = buffer.toString();
-        MathMLUtils.renderTo(context.getClosestParagraph(), null, math);
+        math = MathMLUtils.normalize(math);
+        MathMLUtils.renderTo(context.getClosestParagraph(), context.newRun(), math);
 
         return false;
     }
