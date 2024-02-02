@@ -39,7 +39,10 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
@@ -56,7 +59,7 @@ public class ImageRenderer implements ElementRenderer {
     private static final String[] TAGS = {HtmlConstants.TAG_IMG};
     private static final String HTTP = "http";
     private static final String DOUBLE_SLASH = "//";
-    private static final String BASE64_PREFIX = "data:";
+    private static final String DATA_PREFIX = "data:";
     private static final Map<String, ImageType> PICTURE_TYPES = new HashMap<>(ImageType.values().length);
 
     static {
@@ -111,23 +114,24 @@ public class ImageRenderer implements ElementRenderer {
         } else if (StringUtils.startsWith(src, DOUBLE_SLASH)) {
             // 某些图片链接为了跟随网站协议而隐去了协议名称
             handleRemoteImage(element, context, HTTP + HtmlConstants.COLON + src);
-        } else if (StringUtils.startsWith(src, BASE64_PREFIX)) {
-            handleBase64(element, context, src);
+        } else if (StringUtils.startsWith(src, DATA_PREFIX)) {
+            handleData(element, context, src);
         }
         return false;
     }
 
     /**
-     * 处理base64图片
+     * 处理Data URL
      *
      * @param element HTML元素
      * @param context 渲染上下文
-     * @param src 图片base64数据
+     * @param src 数据
      */
-    private void handleBase64(Element element, HtmlRenderContext context, String src) {
+    private void handleData(Element element, HtmlRenderContext context, String src) {
         int index = src.indexOf(HtmlConstants.COMMA.charAt(0));
         String data = src.substring(index + 1);
-        String format = StringUtils.substringBetween(src.substring(0, index), HtmlConstants.SLASH, HtmlConstants.SEMICOLON);
+        String declaration = src.substring(0, index);
+        String format = StringUtils.substringBetween(declaration, HtmlConstants.SLASH, HtmlConstants.SEMICOLON);
         // org.apache.poi.sl.usermodel.PictureData.PictureType
         if (format.contains(HtmlConstants.MINUS)) {
             format = StringUtils.substringAfterLast(format, HtmlConstants.MINUS);
@@ -136,20 +140,41 @@ public class ImageRenderer implements ElementRenderer {
         }
 
         byte[] bytes;
-        try {
-            bytes = Base64.getDecoder().decode(data);
-        } catch (Exception e) {
-            log.warn("Failed to load image due to illegal base64 data: {}", src);
-            return;
+        if (declaration.contains("base64")) {
+            try {
+                bytes = Base64.getDecoder().decode(data);
+            } catch (Exception e) {
+                log.warn("Failed to load image due to illegal base64 data: {}", src);
+                return;
+            }
+        } else {
+            if (data.startsWith(HtmlConstants.PERCENT)) {
+                try {
+                    data = URLDecoder.decode(data, StandardCharsets.UTF_8.name());
+                } catch (UnsupportedEncodingException e) {
+                    log.warn("Failed to load image due to illegal data url: {}", src);
+                    return;
+                }
+            }
+            bytes = data.getBytes(StandardCharsets.UTF_8);
         }
         BufferedImage image;
         try (InputStream inputStream = new ByteArrayInputStream(bytes)) {
             image = ImageIO.read(inputStream);
-            inputStream.reset();
 
-            int type = PICTURE_TYPES.getOrDefault(format, typeOf(image)).getType();
+            ImageType type = PICTURE_TYPES.getOrDefault(format, typeOf(image));
             boolean svg = HtmlConstants.TAG_SVG.equals(format);
-            addPicture(element, context, inputStream, type, image.getWidth(), image.getHeight(), svg ? bytes : null);
+            InputStream imageStream;
+            if (svg) {
+                ByteArrayCopyStream outputStream = new ByteArrayCopyStream(image.getData().getDataBuffer().getSize());
+                ImageIO.write(image, type.getExtension(), outputStream);
+
+                imageStream = outputStream.toInput();
+            } else {
+                inputStream.reset();
+                imageStream = inputStream;
+            }
+            addPicture(element, context, imageStream, type.getType(), image.getWidth(), image.getHeight(), svg ? bytes : null);
         } catch (IOException | InvalidFormatException e) {
             log.warn("Failed to load image: {}", src, e);
         } finally {
