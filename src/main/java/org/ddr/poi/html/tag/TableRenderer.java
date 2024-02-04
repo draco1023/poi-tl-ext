@@ -369,7 +369,8 @@ public class TableRenderer implements ElementRenderer {
     private CSSLength sumColumnWidths(List<ColumnStyle> columnWidths, int columnIndex, int colspan) {
         Boolean percent = null;
         double sum = 0d;
-        for (int i = 0; i < colspan; i++) {
+        int availableSpan = Math.min(columnWidths.size() - columnIndex, colspan);
+        for (int i = 0; i < availableSpan; i++) {
             CSSLength width = columnWidths.get(columnIndex + i).getWidth();
             if (!width.isValid()) {
                 return width;
