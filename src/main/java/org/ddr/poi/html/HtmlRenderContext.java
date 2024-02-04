@@ -107,6 +107,7 @@ import javax.xml.namespace.QName;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
+import java.net.URI;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Set;
@@ -388,6 +389,12 @@ public class HtmlRenderContext extends RenderContext<String> {
      * @param uri 链接地址
      */
     public void startHyperlink(String uri) {
+        try {
+            URI.create(uri);
+        } catch (Exception e) {
+            log.warn("Illegal href", e);
+            uri = "#";
+        }
         if (isBlocked()) {
             XWPFParagraph paragraph = getClosestParagraph();
             currentRun = paragraph.createHyperlinkRun(uri);
