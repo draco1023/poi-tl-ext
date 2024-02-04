@@ -235,7 +235,7 @@ public class ImageRenderer implements ElementRenderer {
         try {
             connect = HttpURLConnectionUtils.connect(src);
             InputStream urlStream = connect.getInputStream();
-            boolean svg = connect.getHeaderField("content-type").contains(HtmlConstants.TAG_SVG);
+            boolean svg = StringUtils.contains(connect.getHeaderField("content-type"), HtmlConstants.TAG_SVG);
             byte[] svgData = null;
             outputStream = new ByteArrayCopyStream(urlStream.available());
             IOUtils.copy(urlStream, outputStream);
