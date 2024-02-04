@@ -213,4 +213,7 @@ public class NumberingContext {
         this.spacing = spacing;
     }
 
+    public boolean contains(XWPFParagraph paragraph) {
+        return numberingParagraphs != null && numberingParagraphs.contains(paragraph);
+    }
 }

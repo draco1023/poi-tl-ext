@@ -1280,7 +1280,7 @@ public class HtmlRenderContext extends RenderContext<String> {
                 globalCursor.push();
                 XWPFTable xwpfTable = container.insertNewTbl(globalCursor);
                 globalCursor.pop();
-                if (dedupeParagraph != null) {
+                if (dedupeParagraph != null && !numberingContext.contains(dedupeParagraph)) {
                     removeParagraph(container, dedupeParagraph);
                     unmarkDedupe();
                 }
@@ -1392,6 +1392,7 @@ public class HtmlRenderContext extends RenderContext<String> {
                 globalCursor.pop();
                 globalCursor.push();
                 XWPFParagraph paragraph = newParagraph(container, globalCursor);
+                unmarkDedupe();
                 RenderUtils.paragraphStyle(this, paragraph, CSSStyleUtils.EMPTY_STYLE);
             }
         }
