@@ -85,6 +85,7 @@ public class TableCellRenderer implements ElementRenderer {
 
         context.popContainer();
         context.popCursor();
+        context.unmarkDedupe();
     }
 
     @Override
