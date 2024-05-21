@@ -24,9 +24,6 @@ import org.jsoup.nodes.Document.OutputSettings;
 import org.jsoup.nodes.Document.OutputSettings.Syntax;
 import org.jsoup.nodes.Element;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 /**
  * math标签渲染器
  *
