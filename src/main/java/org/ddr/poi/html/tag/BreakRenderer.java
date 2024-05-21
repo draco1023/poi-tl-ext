@@ -16,10 +16,13 @@
 
 package org.ddr.poi.html.tag;
 
+import org.apache.poi.xwpf.usermodel.IRunBody;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.ddr.poi.html.ElementRenderer;
 import org.ddr.poi.html.HtmlConstants;
 import org.ddr.poi.html.HtmlRenderContext;
 import org.jsoup.nodes.Element;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
 
 /**
  * br标签渲染器
@@ -39,7 +42,12 @@ public class BreakRenderer implements ElementRenderer {
      */
     @Override
     public boolean renderStart(Element element, HtmlRenderContext context) {
-        context.newRun().addNewBr();
+        CTR ctr = context.newRun();
+        ctr.addNewBr();
+        IRunBody parent = context.getCurrentRun().getParent();
+        if (parent instanceof XWPFParagraph) {
+            context.markDedupe((XWPFParagraph) parent);
+        }
         return false;
     }
 
