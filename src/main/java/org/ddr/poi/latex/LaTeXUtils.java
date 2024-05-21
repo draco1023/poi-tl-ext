@@ -14,6 +14,9 @@ import uk.ac.ed.ph.snuggletex.SnuggleEngine;
 import uk.ac.ed.ph.snuggletex.SnuggleInput;
 import uk.ac.ed.ph.snuggletex.SnuggleSession;
 import uk.ac.ed.ph.snuggletex.definitions.CorePackageDefinitions;
+import uk.ac.ed.ph.snuggletex.definitions.Globals;
+import uk.ac.ed.ph.snuggletex.definitions.TextFlowContext;
+import uk.ac.ed.ph.snuggletex.dombuilding.MathComplexCommandHandler;
 import uk.ac.ed.ph.snuggletex.internal.util.XMLUtilities;
 import uk.ac.ed.ph.snuggletex.utilities.DefaultTransformerFactoryChooser;
 
@@ -88,6 +91,7 @@ public class LaTeXUtils {
 
         static {
             CorePackageDefinitions.getPackage().loadMathCharacterAliases("math-character-aliases.txt");
+            CorePackageDefinitions.getPackage().addComplexCommandSameArgMode("dfrac", false, 2, Globals.MATH_MODE_ONLY, new MathComplexCommandHandler("mfrac"), null);
         }
     }
 }
