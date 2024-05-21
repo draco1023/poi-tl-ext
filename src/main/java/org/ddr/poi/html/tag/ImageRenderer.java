@@ -219,13 +219,6 @@ public class ImageRenderer implements ElementRenderer {
      */
     private void handleRemoteImage(Element element, HtmlRenderContext context, String src) {
         String extension = FilenameUtils.getExtension(StringUtils.substringBefore(src, HtmlConstants.QUESTION)).toLowerCase();
-        if ("heic".equals(extension)) {
-            String url = convertHeic(src);
-            if (!src.equals(url)) {
-                src = url;
-                extension = ImageType.JPG.getExtension();
-            }
-        }
         ImageType type = PICTURE_TYPES.get(extension);
 
         ByteArrayCopyStream outputStream = null;
@@ -264,10 +257,6 @@ public class ImageRenderer implements ElementRenderer {
             // 释放资源
             image = null;
         }
-    }
-
-    private String convertHeic(String src) {
-        return src + (src.contains(HtmlConstants.QUESTION) ? '&' : '?') + "x-oss-process=image/format,jpg";
     }
 
     @Override
