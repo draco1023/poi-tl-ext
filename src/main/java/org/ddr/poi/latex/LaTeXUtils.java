@@ -15,12 +15,17 @@ import uk.ac.ed.ph.snuggletex.SnuggleInput;
 import uk.ac.ed.ph.snuggletex.SnuggleSession;
 import uk.ac.ed.ph.snuggletex.definitions.CorePackageDefinitions;
 import uk.ac.ed.ph.snuggletex.definitions.Globals;
-import uk.ac.ed.ph.snuggletex.definitions.TextFlowContext;
+import uk.ac.ed.ph.snuggletex.definitions.LaTeXMode;
 import uk.ac.ed.ph.snuggletex.dombuilding.MathComplexCommandHandler;
 import uk.ac.ed.ph.snuggletex.internal.util.XMLUtilities;
 import uk.ac.ed.ph.snuggletex.utilities.DefaultTransformerFactoryChooser;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * LaTeX工具类
@@ -30,6 +35,8 @@ import java.io.IOException;
  */
 public class LaTeXUtils {
     private static final Logger log = LoggerFactory.getLogger(LaTeXUtils.class);
+
+    static final ConcurrentHashMap<String, String> textCircledMap = new ConcurrentHashMap<>();
 
     /**
      * 创建Snuggle会话
@@ -42,7 +49,7 @@ public class LaTeXUtils {
      * 解析字符串
      *
      * @param session Snuggle会话
-     * @param data LaTeX字符串
+     * @param data    LaTeX字符串
      * @return 是否为有效的内容
      */
     public static boolean parse(SnuggleSession session, String data) {
@@ -66,8 +73,8 @@ public class LaTeXUtils {
      * 将LaTeX渲染到段落中
      *
      * @param paragraph 段落
-     * @param ctr 目标run，如果总是在末尾渲染可传null
-     * @param session Snuggle会话
+     * @param ctr       目标run，如果总是在末尾渲染可传null
+     * @param session   Snuggle会话
      */
     public static void renderTo(XWPFParagraph paragraph, CTR ctr, SnuggleSession session) {
         NodeList nodeList = session.buildDOMSubtree();
@@ -92,6 +99,23 @@ public class LaTeXUtils {
         static {
             CorePackageDefinitions.getPackage().loadMathCharacterAliases("math-character-aliases.txt");
             CorePackageDefinitions.getPackage().addComplexCommandSameArgMode("dfrac", false, 2, Globals.MATH_MODE_ONLY, new MathComplexCommandHandler("mfrac"), null);
+
+            try (InputStream is = Globals.class.getClassLoader().getResourceAsStream("math-character-circled.txt");
+                 InputStreamReader isr = new InputStreamReader(is, StandardCharsets.UTF_8);
+                 BufferedReader br = new BufferedReader(isr)) {
+                String line;
+                while ((line = br.readLine()) != null) {
+                    if (line.startsWith("#")) {
+                        continue;
+                    }
+                    line = line.replaceFirst("\\s+#.+$", "");
+                    String[] fields = line.split("->");
+                    textCircledMap.put(fields[0], fields[1]);
+                }
+            } catch (IOException e) {
+                log.warn("Failed to load math-character-circled.txt", e);
+            }
+            CorePackageDefinitions.getPackage().addComplexCommandOneArg("textcircled", false, Globals.ALL_MODES, LaTeXMode.LR, new TextCircledHandler(), null);
         }
     }
 }
