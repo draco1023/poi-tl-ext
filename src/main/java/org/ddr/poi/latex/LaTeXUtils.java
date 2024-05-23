@@ -110,7 +110,7 @@ public class LaTeXUtils {
                     }
                     line = line.replaceFirst("\\s+#.+$", "");
                     String[] fields = line.split("->");
-                    textCircledMap.put(fields[0], fields[1]);
+                    textCircledMap.put(fields[0], fields[1].trim());
                 }
             } catch (IOException e) {
                 log.warn("Failed to load math-character-circled.txt", e);
