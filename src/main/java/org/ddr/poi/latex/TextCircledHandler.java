@@ -17,7 +17,11 @@ public class TextCircledHandler implements CommandHandler {
         String s = builder.extractStringValue(token.getArguments()[0]);
         String replacement = LaTeXUtils.textCircledMap.get(s);
         if (replacement != null) {
-            builder.appendMathMLTextElement(parentElement, "mi", replacement, true);
+            if (builder.isBuildingMathMLIsland()) {
+                builder.appendMathMLTextElement(parentElement, "mi", replacement, false);
+            } else {
+                builder.appendXHTMLTextElement(parentElement, "span", replacement, false);
+            }
         } else {
             log.warn("Text circled not found: {}", s);
         }
