@@ -16,14 +16,21 @@
 
 package org.ddr.poi.html.tag;
 
-import org.apache.commons.io.FilenameUtils;
+import com.drew.imaging.FileType;
+import com.drew.imaging.FileTypeDetector;
+import com.drew.imaging.ImageMetadataReader;
+import com.drew.imaging.ImageProcessingException;
+import com.drew.metadata.Metadata;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.util.Units;
-import org.apache.poi.xwpf.usermodel.Document;
 import org.apache.poi.xwpf.usermodel.SVGPictureData;
+import org.ddr.image.ImageInfo;
+import org.ddr.image.ImageType;
+import org.ddr.image.MetadataReader;
+import org.ddr.image.MetadataReaders;
 import org.ddr.poi.html.ElementRenderer;
 import org.ddr.poi.html.HtmlConstants;
 import org.ddr.poi.html.HtmlRenderContext;
@@ -36,6 +43,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -46,6 +55,7 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 /**
@@ -71,36 +81,6 @@ public class ImageRenderer implements ElementRenderer {
         }
 
         SVGPictureData.initRelation();
-    }
-
-    protected enum ImageType {
-        EMF(Document.PICTURE_TYPE_EMF),
-        WMF(Document.PICTURE_TYPE_WMF),
-        PICT(Document.PICTURE_TYPE_PICT),
-        JPEG(Document.PICTURE_TYPE_JPEG),
-        JPG(Document.PICTURE_TYPE_JPEG),
-        PNG(Document.PICTURE_TYPE_PNG),
-        DIB(Document.PICTURE_TYPE_DIB),
-        GIF(Document.PICTURE_TYPE_GIF),
-        TIF(Document.PICTURE_TYPE_TIFF),
-        TIFF(Document.PICTURE_TYPE_TIFF),
-        EPS(Document.PICTURE_TYPE_EPS),
-        BMP(Document.PICTURE_TYPE_BMP),
-        WPG(Document.PICTURE_TYPE_WPG);
-
-        private final int type;
-
-        ImageType(int type) {
-            this.type = type;
-        }
-
-        public String getExtension() {
-            return name().toLowerCase();
-        }
-
-        public int getType() {
-            return type;
-        }
     }
 
     /**
@@ -175,28 +155,16 @@ public class ImageRenderer implements ElementRenderer {
 
             bytes = data.getBytes(StandardCharsets.UTF_8);
         }
-        BufferedImage image;
-        try (InputStream inputStream = new ByteArrayInputStream(bytes)) {
-            image = ImageIO.read(inputStream);
-
-            ImageType type = PICTURE_TYPES.getOrDefault(format, typeOf(image));
-            boolean svg = HtmlConstants.TAG_SVG.equals(format);
-            InputStream imageStream;
-            if (svg) {
-                ByteArrayCopyStream outputStream = new ByteArrayCopyStream(image.getData().getDataBuffer().getSize());
-                ImageIO.write(image, type.getExtension(), outputStream);
-
-                imageStream = outputStream.toInput();
-            } else {
-                inputStream.reset();
-                imageStream = inputStream;
+        boolean svg = HtmlConstants.TAG_SVG.equals(format);
+        try (ByteArrayInputStream inputStream = new ByteArrayInputStream(bytes)) {
+            ImageInfo info = analyzeImage(inputStream, svg);
+            if (info == null) {
+                log.warn("Illegal image url: {}", src);
+                return;
             }
-            addPicture(element, context, imageStream, type.getType(), image.getWidth(), image.getHeight(), svg ? bytes : null);
+            addPicture(element, context, info.getStream(), info.getRawType(), info.getWidth(), info.getHeight(), svg ? bytes : null);
         } catch (IOException | InvalidFormatException e) {
             log.warn("Failed to load image: {}", src, e);
-        } finally {
-            // 释放资源
-            image = null;
         }
     }
 
@@ -218,45 +186,87 @@ public class ImageRenderer implements ElementRenderer {
      * @param src 图片链接地址
      */
     private void handleRemoteImage(Element element, HtmlRenderContext context, String src) {
-        String extension = FilenameUtils.getExtension(StringUtils.substringBefore(src, HtmlConstants.QUESTION)).toLowerCase();
-        ImageType type = PICTURE_TYPES.get(extension);
-
-        ByteArrayCopyStream outputStream = null;
-        InputStream inputStream = null;
         HttpURLConnection connect = null;
-        BufferedImage image;
         try {
             connect = HttpURLConnectionUtils.connect(src);
             InputStream urlStream = connect.getInputStream();
             boolean svg = StringUtils.contains(connect.getHeaderField("content-type"), HtmlConstants.TAG_SVG);
-            byte[] svgData = null;
-            outputStream = new ByteArrayCopyStream(urlStream.available());
+            ByteArrayCopyStream outputStream = new ByteArrayCopyStream(urlStream.available());
             IOUtils.copy(urlStream, outputStream);
-            if (svg) {
-                svgData = outputStream.toByteArray();
-            }
-            image = ImageIO.read(outputStream.toInput());
+            final byte[] svgData = svg ? outputStream.toByteArray() : null;
 
-            if (image == null) {
+            ByteArrayInputStream inputStream = outputStream.toInput();
+            ImageInfo info = analyzeImage(inputStream, svg);
+            if (info == null) {
                 log.warn("Illegal image url: {}", src);
                 return;
             }
 
-            if (type == null) {
-                type = typeOf(image);
-            }
-
-            inputStream = outputStream.toInput();
-            addPicture(element, context, inputStream, type.getType(), image.getWidth(), image.getHeight(), svgData);
+            addPicture(element, context, info.getStream(), info.getRawType(), info.getWidth(), info.getHeight(), svgData);
         } catch (IOException | InvalidFormatException e) {
             log.warn("Failed to load image: {}", src, e);
         } finally {
             IOUtils.close(connect);
-            IOUtils.closeQuietly(outputStream);
-            IOUtils.closeQuietly(inputStream);
-            // 释放资源
-            image = null;
         }
+    }
+
+    private ImageInfo analyzeImage(ByteArrayInputStream inputStream, boolean svg) throws IOException, InvalidFormatException {
+        final long length = inputStream.available();
+        // actual image data stream
+        ByteArrayInputStream stream = inputStream;
+        ImageType type = null;
+        Dimension dimension = null;
+
+        if (svg) {
+            BufferedImage image = ImageIO.read(inputStream);
+            inputStream.reset();
+
+            type = typeOf(image);
+            ByteArrayCopyStream imageStream = new ByteArrayCopyStream(image.getData().getDataBuffer().getSize());
+            ImageIO.write(image, type.getExtension(), imageStream);
+            stream = imageStream.toInput();
+
+            dimension = new Dimension(image.getWidth(), image.getHeight());
+        } else {
+            FileType fileType = FileTypeDetector.detectFileType(inputStream);
+            for (MetadataReader metadataReader : MetadataReaders.INSTANCES) {
+                if (metadataReader.canRead(fileType)) {
+                    try {
+                        Metadata metadata = ImageMetadataReader.readMetadata(inputStream, length, fileType);
+                        type = metadataReader.getType(metadata);
+                        dimension = metadataReader.getDimension(metadata);
+                        break;
+                    } catch (ImageProcessingException ignored) {
+                    }
+                }
+            }
+            inputStream.reset();
+            if (dimension == null) {
+                Iterator<ImageReader> imageReaders = ImageIO.getImageReaders(inputStream);
+                while (imageReaders.hasNext()) {
+                    ImageReader reader = imageReaders.next();
+                    try {
+                        dimension = new Dimension(reader.getWidth(0), reader.getHeight(0));
+                        break;
+                    } catch (IOException ignored) {
+                    }
+                }
+                if (dimension == null) {
+                    BufferedImage image = ImageIO.read(inputStream);
+                    inputStream.reset();
+
+                    if (image == null) {
+                        return null;
+                    }
+
+                    if (type == null) {
+                        type = typeOf(image);
+                    }
+                    dimension = new Dimension(image.getWidth(), image.getHeight());
+                }
+            }
+        }
+        return new ImageInfo(stream, type, dimension);
     }
 
     @Override

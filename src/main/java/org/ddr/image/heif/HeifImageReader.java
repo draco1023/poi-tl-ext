@@ -1,7 +1,12 @@
 package org.ddr.image.heif;
 
+import com.drew.imaging.FileType;
+import com.drew.imaging.ImageMetadataReader;
+import com.drew.imaging.ImageProcessingException;
+import com.drew.metadata.Metadata;
 import com.twelvemonkeys.imageio.ImageReaderBase;
 import org.apache.commons.io.IOUtils;
+import org.ddr.image.ImageInputStreamWrapper;
 import org.ddr.poi.util.HttpURLConnectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,17 +16,21 @@ import javax.imageio.ImageReadParam;
 import javax.imageio.ImageTypeSpecifier;
 import javax.imageio.spi.ImageReaderSpi;
 import javax.imageio.stream.ImageInputStream;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 
 public class HeifImageReader extends ImageReaderBase {
     private static final Logger log = LoggerFactory.getLogger(HeifImageReader.class);
+    private final HeifMetadataReader metadataReader = new HeifMetadataReader();
+
+    private Metadata metadata;
+    private Dimension dimension;
 
     public HeifImageReader(ImageReaderSpi provider) {
         super(provider);
@@ -29,19 +38,33 @@ public class HeifImageReader extends ImageReaderBase {
 
     @Override
     protected void resetMembers() {
+        metadata = null;
+        dimension = null;
+    }
 
+    @Override
+    public void setInput(Object input, boolean seekForwardOnly, boolean ignoreMetadata) {
+        super.setInput(input, seekForwardOnly, ignoreMetadata);
+
+        if (imageInput != null) {
+            ImageInputStreamWrapper wrapper = new ImageInputStreamWrapper(imageInput);
+            try {
+                metadata = ImageMetadataReader.readMetadata(wrapper, 0, FileType.Heif);
+                dimension = metadataReader.getDimension(metadata);
+            } catch (IOException | ImageProcessingException e) {
+                log.warn("Failed to read metadata", e);
+            }
+        }
     }
 
     @Override
     public int getWidth(int imageIndex) throws IOException {
-        // TODO read 'ispe' 'irot'
-        return 0;
+        return dimension == null ? 0 : dimension.width;
     }
 
     @Override
     public int getHeight(int imageIndex) throws IOException {
-        // TODO read 'ispe' 'irot'
-        return 0;
+        return dimension == null ? 0 : dimension.height;
     }
 
     @Override
@@ -51,16 +74,13 @@ public class HeifImageReader extends ImageReaderBase {
 
     @Override
     public BufferedImage read(int imageIndex, ImageReadParam param) throws IOException {
-        Object input = getInput();
-        if (input instanceof ImageInputStream) {
-            return convert((ImageInputStream) input, param);
-        }
-        return null;
+        return convert(imageInput, param);
     }
 
     BufferedImage convert(ImageInputStream input, ImageReadParam param) throws IOException {
         HttpURLConnection uploadConnection = null;
         HttpURLConnection convertConnection = null;
+        HttpURLConnection downloadConnection = null;
 
         HeicOnlineParam heicOnlineParam = param instanceof HeicOnlineParam ? (HeicOnlineParam) param : new HeicOnlineParam();
 
@@ -113,7 +133,10 @@ public class HeifImageReader extends ImageReaderBase {
                         log.debug("Heic converted: {}", json);
                     }
                     String url = "https://s1.heic.online/upload/" + fileId + "/";
-                    return ImageIO.read(new URL(url));
+                    downloadConnection = HttpURLConnectionUtils.connect(url);
+                    try (InputStream downloadResponse = downloadConnection.getInputStream()) {
+                        return ImageIO.read(downloadResponse);
+                    }
                 } else {
                     log.warn("Failed to convert heic image. Response code: {}, {}", convertResponseCode, json);
                 }
@@ -125,6 +148,7 @@ public class HeifImageReader extends ImageReaderBase {
             log.warn("Failed to convert heic image", e);
             IOUtils.close(uploadConnection);
             IOUtils.close(convertConnection);
+            IOUtils.close(downloadConnection);
         }
 
         return null;

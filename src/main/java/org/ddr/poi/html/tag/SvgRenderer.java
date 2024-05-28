@@ -1,6 +1,7 @@
 package org.ddr.poi.html.tag;
 
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
+import org.ddr.image.ImageType;
 import org.ddr.poi.html.HtmlConstants;
 import org.ddr.poi.html.HtmlRenderContext;
 import org.ddr.poi.util.ByteArrayCopyStream;

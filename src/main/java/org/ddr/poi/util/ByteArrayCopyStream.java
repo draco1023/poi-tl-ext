@@ -18,7 +18,6 @@ package org.ddr.poi.util;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
 
 /**
  * 可以复用输出的二进制数据并转换为输入的流
@@ -37,7 +36,7 @@ public class ByteArrayCopyStream extends ByteArrayOutputStream {
     /**
      * @return 转换为输入流
      */
-    public InputStream toInput() {
+    public ByteArrayInputStream toInput() {
         return new ByteArrayInputStream(buf, 0, count);
     }
 }
