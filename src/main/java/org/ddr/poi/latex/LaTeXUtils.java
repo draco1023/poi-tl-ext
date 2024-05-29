@@ -1,8 +1,17 @@
 package org.ddr.poi.latex;
 
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.poi.xwpf.usermodel.TableWidthType;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.XWPFTableCell;
+import org.apache.poi.xwpf.usermodel.XWPFTableRow;
+import org.apache.xmlbeans.XmlCursor;
+import org.apache.xmlbeans.XmlObject;
+import org.ddr.poi.html.util.Colors;
 import org.ddr.poi.math.MathMLUtils;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBookmark;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +44,9 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class LaTeXUtils {
     private static final Logger log = LoggerFactory.getLogger(LaTeXUtils.class);
+
+    public static final String TAG_MATH = "math";
+    public static final String TAG_TAG = "tag";
 
     static final ConcurrentHashMap<String, String> textCircledMap = new ConcurrentHashMap<>();
 
@@ -77,20 +89,80 @@ public class LaTeXUtils {
      * @param session   Snuggle会话
      */
     public static void renderTo(XWPFParagraph paragraph, CTR ctr, SnuggleSession session) {
+        CTR target = ctr;
         NodeList nodeList = session.buildDOMSubtree();
         int length = nodeList.getLength();
         for (int i = 0; i < length; i++) {
             Node node = nodeList.item(i);
             if (node instanceof Text) {
-                ctr = paragraph.getCTP().addNewR();
-                ctr.addNewT().setStringValue(node.getTextContent());
-            } else if ("math".equals(node.getLocalName())) {
+                target = paragraph.getCTP().addNewR();
+                target.addNewT().setStringValue(node.getTextContent());
+            } else if (TAG_MATH.equals(node.getLocalName())) {
                 String math = XMLUtilities.serializeNode(node,
                         Initializer.SNUGGLE_ENGINE.getDefaultXMLStringOutputOptions());
 
-                MathMLUtils.renderTo(paragraph, ctr, math);
+                MathMLUtils.renderTo(paragraph, target, math);
+            } else if (TAG_TAG.equals(node.getLocalName())) {
+                renderTag(paragraph, ctr, node);
             }
         }
+    }
+
+    private static void renderTag(XWPFParagraph paragraph, CTR ctr, Node node) {
+        XmlCursor pCursor = paragraph.getCTP().newCursor();
+        pCursor.push();
+
+        XWPFTable xwpfTable = paragraph.getBody().insertNewTbl(pCursor);
+        // 100% width
+        xwpfTable.setWidth(5000);
+        xwpfTable.setWidthType(TableWidthType.PCT);
+        // no borders
+        xwpfTable.setLeftBorder(XWPFTable.XWPFBorderType.NONE, 0, 0, Colors.BLACK);
+        xwpfTable.setTopBorder(XWPFTable.XWPFBorderType.NONE, 0, 0, Colors.BLACK);
+        xwpfTable.setRightBorder(XWPFTable.XWPFBorderType.NONE, 0, 0, Colors.BLACK);
+        xwpfTable.setBottomBorder(XWPFTable.XWPFBorderType.NONE, 0, 0, Colors.BLACK);
+        xwpfTable.setInsideHBorder(XWPFTable.XWPFBorderType.NONE, 0, 0, Colors.BLACK);
+        xwpfTable.setInsideVBorder(XWPFTable.XWPFBorderType.NONE, 0, 0, Colors.BLACK);
+        // access to the first row of the new table which created in a table cell will lead to a weird exception
+        xwpfTable.removeRow(0);
+        xwpfTable.addNewCol();
+        xwpfTable.addNewCol();
+        XWPFTableRow row = xwpfTable.getRow(0);
+        XWPFTableCell mathCell = row.getCell(0);
+        XWPFParagraph mathParagraph = mathCell.getParagraphs().get(0);
+        XmlCursor copyCursor = mathParagraph.getCTP().newCursor();
+        copyCursor.toEndToken();
+
+        pCursor.pop();
+        pCursor.toFirstChild();
+        boolean hasNextSibling = true;
+        while (hasNextSibling) {
+            XmlObject obj = pCursor.getObject();
+            if (obj instanceof CTPPr) {
+                pCursor.copyXml(copyCursor);
+                hasNextSibling = pCursor.toNextSibling();
+            } else if (obj == null || obj instanceof CTBookmark || ctr.equals(obj)) {
+                hasNextSibling = pCursor.toNextSibling();
+            } else {
+                // moveXml附带了toNextSibling的效果
+                hasNextSibling = pCursor.moveXml(copyCursor);
+            }
+        }
+        copyCursor.dispose();
+        pCursor.dispose();
+
+        // render math
+        String math = XMLUtilities.serializeNode(node.getFirstChild(),
+                Initializer.SNUGGLE_ENGINE.getDefaultXMLStringOutputOptions());
+        MathMLUtils.renderTo(mathParagraph, mathParagraph.createRun().getCTR(), math);
+
+        // render tag
+        XWPFTableCell tagCell = row.getCell(1);
+        tagCell.setVerticalAlignment(XWPFTableCell.XWPFVertAlign.CENTER);
+        XWPFParagraph tagParagraph = tagCell.getParagraphs().get(0);
+        String tag = XMLUtilities.serializeNode(node.getLastChild(),
+                Initializer.SNUGGLE_ENGINE.getDefaultXMLStringOutputOptions());
+        MathMLUtils.renderTo(tagParagraph, tagParagraph.createRun().getCTR(), tag);
     }
 
     private static class Initializer {
@@ -116,6 +188,7 @@ public class LaTeXUtils {
                 log.warn("Failed to load math-character-circled.txt", e);
             }
             CorePackageDefinitions.getPackage().addComplexCommandOneArg("textcircled", false, Globals.ALL_MODES, LaTeXMode.LR, new TextCircledHandler(), null);
+            CorePackageDefinitions.getPackage().addComplexCommandOneArg("tag", false, Globals.ALL_MODES, LaTeXMode.LR, new TagHandler(), null);
         }
     }
 }
