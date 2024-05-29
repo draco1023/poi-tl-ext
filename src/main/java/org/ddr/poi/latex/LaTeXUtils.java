@@ -125,10 +125,8 @@ public class LaTeXUtils {
         xwpfTable.setInsideVBorder(XWPFTable.XWPFBorderType.NONE, 0, 0, Colors.BLACK);
         // access to the first row of the new table which created in a table cell will lead to a weird exception
         xwpfTable.removeRow(0);
-        xwpfTable.addNewCol();
-        xwpfTable.addNewCol();
-        XWPFTableRow row = xwpfTable.getRow(0);
-        XWPFTableCell mathCell = row.getCell(0);
+        XWPFTableRow row = xwpfTable.createRow();
+        XWPFTableCell mathCell = row.createCell();
         XWPFParagraph mathParagraph = mathCell.getParagraphs().get(0);
         XmlCursor copyCursor = mathParagraph.getCTP().newCursor();
         copyCursor.toEndToken();
@@ -157,7 +155,7 @@ public class LaTeXUtils {
         MathMLUtils.renderTo(mathParagraph, mathParagraph.createRun().getCTR(), math);
 
         // render tag
-        XWPFTableCell tagCell = row.getCell(1);
+        XWPFTableCell tagCell = row.createCell();
         tagCell.setVerticalAlignment(XWPFTableCell.XWPFVertAlign.CENTER);
         XWPFParagraph tagParagraph = tagCell.getParagraphs().get(0);
         String tag = XMLUtilities.serializeNode(node.getLastChild(),
