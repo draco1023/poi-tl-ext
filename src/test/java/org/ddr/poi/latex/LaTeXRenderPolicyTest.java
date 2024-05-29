@@ -24,8 +24,8 @@ class LaTeXRenderPolicyTest {
         // https://www2.ph.ed.ac.uk/snuggletex/documentation/math-mode.html
         data.put("math1", "$$ x+2=3 $$");
         data.put("math2", "\\[ \\sum_{i=1}^{\\infty} \\frac{1}{n^s} \n" +
-                "= \\prod_p \\frac{1}{1 - p^{-s}} \\]");
-        data.put("math3", "Product $\\prod_{i=a}^{b} f(i)$ inside text. $\\mathbb{N} \\mathbf{N} \\mathbb{Z} \\mathbf{Z} \\mathbb{D} \\mathbf{D} \\mathbb{Q} \\mathbf{Q} \\mathbb{R} \\mathbf{R} \\mathbb{C} \\mathbf{C}$");
+                "= \\prod_p \\frac{1}{1 - p^{-s}} \\tag{1.1}\\]");
+        data.put("math3", "Product $\\prod_{i=a}^{b} f(i) \\tag{\\textcircled{1}}$ inside text. $\\mathbb{N} \\mathbf{N} \\mathbb{Z} \\mathbf{Z} \\mathbb{D} \\mathbf{D} \\mathbb{Q} \\mathbf{Q} \\mathbb{R} \\mathbf{R} \\mathbb{C} \\mathbf{C}$");
         data.put("math4", "$\\lim_{x\\to\\infty} f(x)$");
         try (InputStream inputStream = LaTeXRenderPolicyTest.class.getResourceAsStream("/math.docx")) {
             XWPFTemplate.compile(inputStream, configure).render(data).writeToFile("latex_out.docx");
