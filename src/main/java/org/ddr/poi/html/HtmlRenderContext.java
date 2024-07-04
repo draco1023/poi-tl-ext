@@ -1281,7 +1281,9 @@ public class HtmlRenderContext extends RenderContext<String> {
                 XWPFTable xwpfTable = container.insertNewTbl(globalCursor);
                 globalCursor.pop();
                 if (dedupeParagraph != null && !numberingContext.contains(dedupeParagraph)) {
-                    removeParagraph(container, dedupeParagraph);
+                    if (!dedupeParagraph.equals(getRun().getParent())) {
+                        removeParagraph(container, dedupeParagraph);
+                    }
                     unmarkDedupe();
                 }
                 // 新增时会自动创建一行一列，会影响自定义的表格渲染逻辑，故删除
