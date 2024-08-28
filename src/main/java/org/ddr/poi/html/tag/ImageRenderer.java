@@ -54,9 +54,7 @@ import java.net.HttpURLConnection;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
 
 /**
  * img标签渲染器
@@ -71,15 +69,10 @@ public class ImageRenderer implements ElementRenderer {
     private static final String HTTP = "http";
     private static final String DOUBLE_SLASH = "//";
     private static final String DATA_PREFIX = "data:";
-    private static final Map<String, ImageType> PICTURE_TYPES = new HashMap<>(ImageType.values().length);
     private static final String COMMENT_MATH_PREFIX = "<!--MathML: <math ";
     private static final String COMMENT_MATH_SUFFIX = "</math>-->";
 
     static {
-        for (ImageType type : ImageType.values()) {
-            PICTURE_TYPES.put(type.getExtension(), type);
-        }
-
         SVGPictureData.initRelation();
     }
 
@@ -353,6 +346,14 @@ public class ImageRenderer implements ElementRenderer {
             CSSLength cssLength = CSSLength.of(maxHeight);
             if (cssLength.isValid()) {
                 maxHeightInEMU = context.computeLengthInEMU(cssLength, heightInEMU, Integer.MAX_VALUE);
+            }
+        }
+
+        if (declaredWidth == widthInEMU ^ declaredHeight == heightInEMU) {
+            if (declaredWidth == widthInEMU) {
+                declaredWidth = (int) (declaredHeight * naturalAspect);
+            } else {
+                declaredHeight = (int) (declaredWidth / naturalAspect);
             }
         }
 
