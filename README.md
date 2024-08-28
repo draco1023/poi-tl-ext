@@ -9,7 +9,7 @@ poi 4.x poi-tl 1.11 以前的版本
 <dependency>
     <groupId>io.github.draco1023</groupId>
     <artifactId>poi-tl-ext</artifactId>
-    <version>0.4.16</version>
+    <version>0.4.17</version>
 </dependency>
 ```
 
@@ -19,7 +19,7 @@ poi 5.x poi-tl 1.11.0+
 <dependency>
     <groupId>io.github.draco1023</groupId>
     <artifactId>poi-tl-ext</artifactId>
-    <version>0.4.16-poi5</version>
+    <version>0.4.17-poi5</version>
 </dependency>
 ```
 
@@ -52,3 +52,8 @@ poi 5.x poi-tl 1.11.0+
 
 - 支持渲染`MathML`字符串，插件类为`MathMLRenderPolicy`
 - 支持渲染`LaTeX`字符串，插件类为`LaTeXRenderPolicy`
+
+## 支持我
+如果您觉得这个插件节省了您的时间和精力，或者解决了您的难题，可以考虑支持一下我的工作，感谢！ ⚡⚡⚡
+
+![wechat_sp](https://pub-1085551b511e4719a277177fe3c8f95b.r2.dev/wechat_sp.jpg)
