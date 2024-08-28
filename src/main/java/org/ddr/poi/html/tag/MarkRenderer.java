@@ -16,10 +16,11 @@
 
 package org.ddr.poi.html.tag;
 
+import com.steadystate.css.dom.CSSStyleDeclarationImpl;
+import org.apache.commons.lang3.StringUtils;
 import org.ddr.poi.html.ElementRenderer;
 import org.ddr.poi.html.HtmlConstants;
 import org.ddr.poi.html.HtmlRenderContext;
-import org.ddr.poi.html.util.CSSStyleUtils;
 import org.jsoup.nodes.Element;
 
 /**
@@ -40,19 +41,12 @@ public class MarkRenderer implements ElementRenderer {
      */
     @Override
     public boolean renderStart(Element element, HtmlRenderContext context) {
-        context.pushInlineStyle(CSSStyleUtils.parse(HtmlConstants.DEFINED_MARK), element.isBlock());
-        return true;
-    }
+        CSSStyleDeclarationImpl cssStyleDeclaration = context.currentElementStyle();
 
-    /**
-     * 元素渲染结束需要执行的逻辑
-     *
-     * @param element HTML元素
-     * @param context 渲染上下文
-     */
-    @Override
-    public void renderEnd(Element element, HtmlRenderContext context) {
-        context.popInlineStyle();
+        if (StringUtils.isEmpty(cssStyleDeclaration.getBackgroundColor())) {
+            cssStyleDeclaration.setBackgroundColor("yellow");
+        }
+        return true;
     }
 
     @Override

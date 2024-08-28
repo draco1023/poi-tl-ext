@@ -17,7 +17,6 @@
 package org.ddr.poi.html;
 
 import org.apache.commons.compress.utils.Sets;
-import org.ddr.poi.html.util.Colors;
 
 import java.util.Set;
 
@@ -337,7 +336,6 @@ public interface HtmlConstants {
     String DEFINED_SUBSCRIPT = inlineStyle(CSS_VERTICAL_ALIGN, SUB);
     String DEFINED_LARGER = inlineStyle(CSS_FONT_SIZE, LARGER);
     String DEFINED_SMALLER = inlineStyle(CSS_FONT_SIZE, SMALLER);
-    String DEFINED_MARK = inlineStyle(CSS_BACKGROUND_COLOR, Colors.getColorByName("yellow"));
     String DEFINED_PRE = inlineStyle(CSS_WHITE_SPACE, PRE);
 
     /**
