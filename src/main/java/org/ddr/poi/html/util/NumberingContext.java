@@ -48,13 +48,15 @@ public class NumberingContext {
      * 每级缩进
      */
     private static final int INDENT = 360;
+    private static final int HANGING = 360;
     private final XWPFDocument document;
     private int indent = INDENT;
+    private int hanging = HANGING;
     private STLevelSuffix.Enum spacing;
     private int nextAbstractNumberId;
     private int nextNumberingLevel;
 
-    private List<ListStyleType> numberFormats;
+    private List<ListStyle> listStyles;
     private TreeMap<String, BigInteger> numberIdMap = new TreeMap<>(Collections.reverseOrder());
     private List<XWPFParagraph> numberingParagraphs;
 
@@ -65,15 +67,15 @@ public class NumberingContext {
     /**
      * 开始新的列表
      *
-     * @param format 列表符号类型
+     * @param listStyle  列表样式
      */
-    public void startLevel(ListStyleType format) {
+    public void startLevel(ListStyle listStyle) {
         int level = nextNumberingLevel++;
         if (level == 0) {
             numberingParagraphs = new ArrayList<>(8);
-            numberFormats = new ArrayList<>(4);
+            listStyles = new ArrayList<>(4);
         }
-        numberFormats.add(format);
+        listStyles.add(listStyle);
     }
 
     /**
@@ -95,13 +97,13 @@ public class NumberingContext {
                 break;
             }
         }
-        if (!numberFormats.isEmpty()) {
-            numberFormats.remove(numberFormats.size() - 1);
+        if (!listStyles.isEmpty()) {
+            listStyles.remove(listStyles.size() - 1);
         }
 
         if (nextNumberingLevel == 0) {
             numberingParagraphs = null;
-            numberFormats = null;
+            listStyles = null;
         }
     }
 
@@ -143,11 +145,23 @@ public class NumberingContext {
                     ctAbstractNum.setAbstractNumId(abstractNumberId);
                     ctAbstractNum.addNewMultiLevelType().setVal(STMultiLevelType.HYBRID_MULTILEVEL);
 
-                    for (int i = 0; i < numberFormats.size(); i++) {
-                        ListStyleType listStyleType = numberFormats.get(i);
+                    for (int i = 0; i < listStyles.size(); i++) {
+                        ListStyle listStyle = listStyles.get(i);
+                        ListStyleType listStyleType = listStyle.getNumberFormat();
                         CTLvl cTLvl = ctAbstractNum.addNewLvl();
                         CTInd ind = cTLvl.addNewPPr().addNewInd();
-                        ind.setLeft(BigInteger.valueOf(indent * i));
+                        long left = indent * i + listStyle.getLeft();
+                        long right = listStyle.getRight();
+                        for (int j = 0; j < i; j++) {
+                            ListStyle previous = listStyles.get(j);
+                            left += previous.getLeft();
+                            right += previous.getRight();
+                        }
+                        ind.setLeft(BigInteger.valueOf(left));
+                        ind.setRight(BigInteger.valueOf(right));
+                        if (listStyle.isHanging()) {
+                            ind.setHanging(BigInteger.valueOf(hanging));
+                        }
 
                         cTLvl.addNewNumFmt().setVal(listStyleType.getFormat());
                         cTLvl.addNewLvlText().setVal(getLevelText(listStyleType, i));
@@ -198,8 +212,8 @@ public class NumberingContext {
 
     private String getFormatKey() {
         StringBuilder sb = new StringBuilder();
-        for (ListStyleType format : numberFormats) {
-            sb.append(format.getName()).append(StringUtils.SPACE);
+        for (ListStyle listStyle : listStyles) {
+            sb.append(listStyle.getNumberFormat().getName()).append(StringUtils.SPACE);
         }
         return sb.toString();
     }
@@ -207,6 +221,12 @@ public class NumberingContext {
     public void setIndent(int indent) {
         if (indent >= 0) {
             this.indent = indent;
+        }
+    }
+
+    public void setHanging(int hanging) {
+        if (hanging >= 0) {
+            this.hanging = hanging;
         }
     }
 

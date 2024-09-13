@@ -20,7 +20,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.ddr.poi.html.ElementRenderer;
 import org.ddr.poi.html.HtmlConstants;
 import org.ddr.poi.html.HtmlRenderContext;
+import org.ddr.poi.html.util.CSSLength;
+import org.ddr.poi.html.util.ListStyle;
 import org.ddr.poi.html.util.ListStyleType;
+import org.ddr.poi.html.util.RenderUtils;
 import org.jsoup.nodes.Element;
 
 /**
@@ -41,7 +44,16 @@ public class ListRenderer implements ElementRenderer {
      */
     @Override
     public boolean renderStart(Element element, HtmlRenderContext context) {
-        context.getNumberingContext().startLevel(determineNumberFormat(context, element));
+        String listStylePosition = context.currentElementStyle().getPropertyValue(HtmlConstants.CSS_LIST_STYLE_POSITION);
+        boolean hanging = !HtmlConstants.INSIDE.equals(listStylePosition);
+        CSSLength marginLeft = CSSLength.of(context.currentElementStyle().getMarginLeft().toLowerCase());
+        int left = marginLeft.isValid() && !marginLeft.isPercent()
+                ? RenderUtils.emuToTwips(context.lengthToEMU(marginLeft)) : 0;
+        CSSLength marginRight = CSSLength.of(context.currentElementStyle().getMarginRight().toLowerCase());
+        int right = marginRight.isValid() && !marginRight.isPercent()
+                ? RenderUtils.emuToTwips(context.lengthToEMU(marginRight)) : 0;
+        ListStyle listStyle = new ListStyle(determineNumberFormat(context, element), hanging, left, right);
+        context.getNumberingContext().startLevel(listStyle);
         return true;
     }
 
