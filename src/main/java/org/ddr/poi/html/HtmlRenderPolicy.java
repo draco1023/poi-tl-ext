@@ -154,6 +154,7 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
             htmlRenderContext.setGlobalFontSize(BigInteger.valueOf(config.getGlobalFontSizeInHalfPoints()));
         }
         htmlRenderContext.getNumberingContext().setIndent(config.getNumberingIndent());
+        htmlRenderContext.getNumberingContext().setHanging(config.getNumberingHanging());
         htmlRenderContext.getNumberingContext().setSpacing(config.getNumberingSpacing());
         htmlRenderContext.setShowDefaultTableBorderInTableCell(config.isShowDefaultTableBorderInTableCell());
 

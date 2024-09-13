@@ -325,12 +325,25 @@ public class CSSStyleUtils {
         switch (length) {
             case 0:
             case 1:
-                if (StringUtils.isNotBlank(valueList.getCssText())) {
-                    style.getProperties().add(i, new Property(HtmlConstants.CSS_LIST_STYLE_TYPE, valueList, false));
+                String cssText = valueList.getCssText();
+                if (StringUtils.isNotBlank(cssText)) {
+                    handleListStyleValue(style, i, cssText.toLowerCase(), valueList);
                 }
                 break;
             default:
-                style.getProperties().add(i, new Property(HtmlConstants.CSS_LIST_STYLE_TYPE, valueList.item(0), false));
+                for (int j = 0; j < length; j++) {
+                    CSSValue item = valueList.item(j);
+                    String value = item.getCssText().toLowerCase();
+                    handleListStyleValue(style, i, value, item);
+                }
+        }
+    }
+
+    private static void handleListStyleValue(CSSStyleDeclarationImpl style, int i, String value, CSSValue item) {
+        if (HtmlConstants.LIST_STYLE_POSITIONS.contains(value)) {
+            style.getProperties().add(i, new Property(HtmlConstants.CSS_LIST_STYLE_POSITION, item, false));
+        } else if (!value.contains(HtmlConstants.LEFT_PARENTHESIS)) {
+            style.getProperties().add(i, new Property(HtmlConstants.CSS_LIST_STYLE_TYPE, item, false));
         }
     }
 

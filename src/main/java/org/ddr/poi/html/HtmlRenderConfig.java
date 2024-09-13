@@ -35,6 +35,7 @@ public class HtmlRenderConfig {
     private List<ElementRenderer> customRenderers;
 
     private int numberingIndent = -1;
+    private int numberingHanging = -1;
     private STLevelSuffix.Enum numberingSpacing;
 
     /**
@@ -95,6 +96,17 @@ public class HtmlRenderConfig {
 
     public void setNumberingIndent(int numberingIndent) {
         this.numberingIndent = numberingIndent;
+    }
+
+    /**
+     * @return custom numbering hanging
+     */
+    public int getNumberingHanging() {
+        return numberingHanging;
+    }
+
+    public void setNumberingHanging(int numberingHanging) {
+        this.numberingHanging = numberingHanging;
     }
 
     /**
