@@ -27,6 +27,10 @@ public class SvgRenderer extends ImageRenderer {
 
     private static final String[] TAGS = {HtmlConstants.TAG_SVG};
 
+    static {
+        System.setProperty("com.twelvemonkeys.imageio.plugins.svg.allowExternalResources", "true");
+    }
+
     /**
      * 开始渲染
      *
