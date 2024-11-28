@@ -69,6 +69,11 @@ public class HeaderBreakRenderer implements ElementRenderer {
     }
 
     @Override
+    public void renderEnd(Element element, HtmlRenderContext context) {
+        context.unmarkDedupe();
+    }
+
+    @Override
     public String[] supportedTags() {
         return TAGS;
     }
