@@ -120,8 +120,10 @@ import java.util.Set;
  */
 public class HtmlRenderContext extends RenderContext<String> {
     private static final Logger log = LoggerFactory.getLogger(HtmlRenderContext.class);
-    private static final QName R_QNAME = new QName("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "r");
-    private static final QName HYPERLINK_QNAME = new QName("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "hyperlink");
+    private static final QName P_QNAME = new QName(XmlUtils.NS_WORDPROCESSINGML, "p");
+    private static final QName R_QNAME = new QName(XmlUtils.NS_WORDPROCESSINGML, "r");
+    private static final QName BR_QNAME = new QName(XmlUtils.NS_WORDPROCESSINGML, "br");
+    private static final QName HYPERLINK_QNAME = new QName(XmlUtils.NS_WORDPROCESSINGML, "hyperlink");
 
     /**
      * 默认字号 小四 12pt 16px
@@ -1393,7 +1395,28 @@ public class HtmlRenderContext extends RenderContext<String> {
     }
 
     private boolean shouldNewParagraph(Element element) {
-        return dedupeParagraph == null;
+        if (dedupeParagraph == null) {
+            return true;
+        }
+        boolean newParagraph = false;
+        XmlCursor xmlCursor = dedupeParagraph.getCTP().newCursor();
+        if (xmlCursor.toPrevSibling()) {
+            if (P_QNAME.equals(xmlCursor.getName())) {
+                if (xmlCursor.toLastChild()) {
+                    if (R_QNAME.equals(xmlCursor.getName())) {
+                        xmlCursor.push();
+                        if (xmlCursor.toFirstChild() && BR_QNAME.equals(xmlCursor.getName()) && !xmlCursor.toNextSibling()) {
+                            xmlCursor.pop();
+                            xmlCursor.removeXml();
+                            unmarkDedupe();
+                            newParagraph = true;
+                        }
+                    }
+                }
+            }
+        }
+        xmlCursor.dispose();
+        return newParagraph;
     }
 
     private void adjustCursor(IBody container, boolean isTableTag) {

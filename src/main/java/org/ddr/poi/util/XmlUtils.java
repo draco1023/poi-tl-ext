@@ -24,6 +24,7 @@ import org.apache.xmlbeans.XmlObject;
  * @since 2022-02-20 19:15
  */
 public class XmlUtils {
+    public static final String NS_WORDPROCESSINGML = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 
     /**
      * 移除xml元素上声明的命名空间
