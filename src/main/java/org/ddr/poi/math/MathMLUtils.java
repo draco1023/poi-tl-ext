@@ -26,6 +26,7 @@ import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.xmlbeans.XmlCursor;
 import org.apache.xmlbeans.XmlException;
+import org.ddr.poi.util.XmlUtils;
 import org.openxmlformats.schemas.officeDocument.x2006.math.CTOMath;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTFonts;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTP;
@@ -147,7 +148,7 @@ public class MathMLUtils {
         while (xmlCursor.hasNextToken()) {
             XmlCursor.TokenType tokenType = xmlCursor.toNextToken();
             if (tokenType == XmlCursor.TokenType.START) {
-                if (xmlCursor.getObject() instanceof CTR) {
+                if (XmlUtils.R_QNAME.equals(xmlCursor.getName())) {
                     CTFonts ctFonts = ((org.openxmlformats.schemas.officeDocument.x2006.math.CTR) xmlCursor.getObject()).addNewRPr2().addNewRFonts();
                     ctFonts.setAscii(MATH_FONT);
                     ctFonts.setEastAsia(MATH_FONT);
@@ -183,7 +184,7 @@ public class MathMLUtils {
                     xmlCursor.toNextToken();
                     xmlCursor.insertElement(OMATH_QNAME);
                     break;
-                } else if (xmlCursor.getObject() instanceof CTOMath) {
+                } else if (OMATH_QNAME.equals(xmlCursor.getName())) {
                     oMathIndex++;
                 }
             }
