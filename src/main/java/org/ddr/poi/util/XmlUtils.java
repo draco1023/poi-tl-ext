@@ -19,12 +19,33 @@ package org.ddr.poi.util;
 import org.apache.xmlbeans.XmlCursor;
 import org.apache.xmlbeans.XmlObject;
 
+import javax.xml.namespace.QName;
+import java.util.HashSet;
+import java.util.Set;
+
 /**
  * @author Draco
  * @since 2022-02-20 19:15
  */
 public class XmlUtils {
     public static final String NS_WORDPROCESSINGML = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+
+    public static final QName P_QNAME = new QName(NS_WORDPROCESSINGML, "p");
+    public static final QName PPR_QNAME = new QName(NS_WORDPROCESSINGML, "pPr");
+    public static final QName R_QNAME = new QName(NS_WORDPROCESSINGML, "r");
+    public static final QName BR_QNAME = new QName(NS_WORDPROCESSINGML, "br");
+    public static final QName TBL_QNAME = new QName(NS_WORDPROCESSINGML, "tbl");
+    public static final QName HYPERLINK_QNAME = new QName(NS_WORDPROCESSINGML, "hyperlink");
+    public static final QName BOOKMARK_START_QNAME = new QName(NS_WORDPROCESSINGML, "bookmarkStart");
+    public static final QName BOOKMARK_END_QNAME = new QName(NS_WORDPROCESSINGML, "bookmarkEnd");
+
+    public static final Set<QName> INVALID_R_SIBLINGS = new HashSet<>();
+
+    static {
+        INVALID_R_SIBLINGS.add(PPR_QNAME);
+        INVALID_R_SIBLINGS.add(BOOKMARK_START_QNAME);
+        INVALID_R_SIBLINGS.add(BOOKMARK_END_QNAME);
+    }
 
     /**
      * 移除xml元素上声明的命名空间

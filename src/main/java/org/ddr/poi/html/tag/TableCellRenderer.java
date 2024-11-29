@@ -26,8 +26,8 @@ import org.ddr.poi.html.ElementRenderer;
 import org.ddr.poi.html.HtmlConstants;
 import org.ddr.poi.html.HtmlRenderContext;
 import org.ddr.poi.html.util.RenderUtils;
+import org.ddr.poi.util.XmlUtils;
 import org.jsoup.nodes.Element;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTP;
 
 import java.util.List;
 
@@ -77,7 +77,7 @@ public class TableCellRenderer implements ElementRenderer {
         List<XWPFParagraph> paragraphs = context.getContainer().getParagraphs();
         if (paragraphs.size() > 1) {
             XmlCursor xmlCursor = context.currentCursorObject().newCursor();
-            if (xmlCursor.toPrevSibling() && xmlCursor.getObject() instanceof CTP) {
+            if (xmlCursor.toPrevSibling() && XmlUtils.P_QNAME.equals(xmlCursor.getName())) {
                 ((XWPFTableCell) context.getContainer()).removeParagraph(paragraphs.size() - 1);
             }
             xmlCursor.dispose();

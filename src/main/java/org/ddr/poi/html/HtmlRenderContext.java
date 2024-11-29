@@ -73,14 +73,12 @@ import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.STAlignH
 import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.STAlignV;
 import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.STRelFromH;
 import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.STRelFromV;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBookmark;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTColor;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDrawing;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTFonts;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTHyperlink;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTMarkupRange;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTP;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageMar;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
@@ -103,7 +101,6 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.STVerticalAlignRun
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.xml.namespace.QName;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
@@ -120,10 +117,7 @@ import java.util.Set;
  */
 public class HtmlRenderContext extends RenderContext<String> {
     private static final Logger log = LoggerFactory.getLogger(HtmlRenderContext.class);
-    private static final QName P_QNAME = new QName(XmlUtils.NS_WORDPROCESSINGML, "p");
-    private static final QName R_QNAME = new QName(XmlUtils.NS_WORDPROCESSINGML, "r");
-    private static final QName BR_QNAME = new QName(XmlUtils.NS_WORDPROCESSINGML, "br");
-    private static final QName HYPERLINK_QNAME = new QName(XmlUtils.NS_WORDPROCESSINGML, "hyperlink");
+
 
     /**
      * 默认字号 小四 12pt 16px
@@ -408,7 +402,7 @@ public class HtmlRenderContext extends RenderContext<String> {
             String rId = getRun().getParent().getPart().getPackagePart()
                     .addExternalRelationship(uri, XWPFRelation.HYPERLINK.getRelation()).getId();
             XmlCursor xmlCursor = getRun().getCTR().newCursor();
-            xmlCursor.insertElement(HYPERLINK_QNAME);
+            xmlCursor.insertElement(XmlUtils.HYPERLINK_QNAME);
             xmlCursor.toPrevSibling();
             CTHyperlink ctHyperlink = (CTHyperlink) xmlCursor.getObject();
             xmlCursor.dispose();
@@ -477,7 +471,7 @@ public class HtmlRenderContext extends RenderContext<String> {
         } else {
             // 在占位符之前插入run
             XmlCursor xmlCursor = getRun().getCTR().newCursor();
-            xmlCursor.insertElement(R_QNAME);
+            xmlCursor.insertElement(XmlUtils.R_QNAME);
             xmlCursor.toPrevSibling();
             CTR ctr = (CTR) xmlCursor.getObject();
             xmlCursor.dispose();
@@ -1397,15 +1391,16 @@ public class HtmlRenderContext extends RenderContext<String> {
     private boolean shouldNewParagraph(Element element) {
         if (dedupeParagraph == null) {
             return true;
+            // return !HtmlConstants.TAG_HR.equals(element.normalName());
         }
         boolean newParagraph = false;
         XmlCursor xmlCursor = dedupeParagraph.getCTP().newCursor();
         if (xmlCursor.toPrevSibling()) {
-            if (P_QNAME.equals(xmlCursor.getName())) {
+            if (XmlUtils.P_QNAME.equals(xmlCursor.getName())) {
                 if (xmlCursor.toLastChild()) {
-                    if (R_QNAME.equals(xmlCursor.getName())) {
+                    if (XmlUtils.R_QNAME.equals(xmlCursor.getName())) {
                         xmlCursor.push();
-                        if (xmlCursor.toFirstChild() && BR_QNAME.equals(xmlCursor.getName()) && !xmlCursor.toNextSibling()) {
+                        if (xmlCursor.toFirstChild() && XmlUtils.BR_QNAME.equals(xmlCursor.getName()) && !xmlCursor.toNextSibling()) {
                             xmlCursor.pop();
                             xmlCursor.removeXml();
                             unmarkDedupe();
@@ -1420,14 +1415,14 @@ public class HtmlRenderContext extends RenderContext<String> {
     }
 
     private void adjustCursor(IBody container, boolean isTableTag) {
-        if (globalCursor.getObject() instanceof CTR) {
+        if (XmlUtils.R_QNAME.equals(globalCursor.getName())) {
             globalCursor.push();
             globalCursor.toParent();
         }
         globalCursor.push();
         // 如果是表格，检查当前word容器的前一个兄弟元素是否为表格，是则插入一个段落，防止表格粘连在一起
         if (isTableTag && globalCursor.toPrevSibling()) {
-            if (globalCursor.getObject() instanceof CTTbl) {
+            if (XmlUtils.TBL_QNAME.equals(globalCursor.getName())) {
                 // pop() is safer than toNextSibling()
                 globalCursor.pop();
                 globalCursor.push();
@@ -1458,7 +1453,7 @@ public class HtmlRenderContext extends RenderContext<String> {
             if (object instanceof CTMarkupRange) {
                 continue;
             }
-            if (!(object instanceof CTPPr)) {
+            if (!XmlUtils.PPR_QNAME.equals(rCursor.getName())) {
                 hasPrevSibling = true;
                 break;
             }
@@ -1477,11 +1472,10 @@ public class HtmlRenderContext extends RenderContext<String> {
         rCursor.pop();
         rCursor.toFirstChild();
         while (!ctr.equals(rCursor.getObject())) {
-            XmlObject obj = rCursor.getObject();
-            if (obj instanceof CTPPr) {
+            if (XmlUtils.PPR_QNAME.equals(rCursor.getName())) {
                 rCursor.copyXml(pCursor);
                 rCursor.toNextSibling();
-            } else if (obj instanceof CTBookmark) {
+            } else if (XmlUtils.BOOKMARK_START_QNAME.equals(rCursor.getName()) || XmlUtils.BOOKMARK_END_QNAME.equals(rCursor.getName())) {
                 rCursor.toNextSibling();
             } else {
                 // moveXml附带了toNextSibling的效果

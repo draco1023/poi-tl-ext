@@ -26,7 +26,6 @@ import org.apache.poi.xwpf.usermodel.IBodyElement;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.xmlbeans.XmlCursor;
-import org.apache.xmlbeans.XmlObject;
 import org.ddr.poi.html.tag.ARenderer;
 import org.ddr.poi.html.tag.BigRenderer;
 import org.ddr.poi.html.tag.BoldRenderer;
@@ -56,9 +55,8 @@ import org.ddr.poi.html.tag.UnderlineRenderer;
 import org.ddr.poi.html.tag.WalkThroughRenderer;
 import org.ddr.poi.html.util.CSSLength;
 import org.ddr.poi.html.util.JsoupUtils;
+import org.ddr.poi.util.XmlUtils;
 import org.jsoup.nodes.Document;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBookmark;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
 
 import java.math.BigInteger;
@@ -182,7 +180,7 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
         XmlCursor xmlCursor = ctr.newCursor();
         xmlCursor.push();
         while (xmlCursor.toNextSibling()) {
-            if (isValidSibling(xmlCursor.getObject())) {
+            if (isValidSibling(xmlCursor)) {
                 hasSibling = true;
                 break;
             }
@@ -190,7 +188,7 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
         if (!hasSibling) {
             xmlCursor.pop();
             while (xmlCursor.toPrevSibling()) {
-                if (isValidSibling(xmlCursor.getObject())) {
+                if (isValidSibling(xmlCursor)) {
                     hasSibling = true;
                     break;
                 }
@@ -200,8 +198,8 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
         return hasSibling;
     }
 
-    private boolean isValidSibling(XmlObject object) {
-        return !(object instanceof CTPPr) && !(object instanceof CTBookmark);
+    private boolean isValidSibling(XmlCursor cursor) {
+        return !XmlUtils.INVALID_R_SIBLINGS.contains(cursor.getName());
     }
 
 }
