@@ -858,7 +858,9 @@ public class HtmlRenderContext extends RenderContext<String> {
                         continue;
                     }
                     if (mergeWhitespace) {
-                        sb.append(' ');
+                        if (sb.length() > 0) {
+                            sb.append(' ');
+                        }
                         mergeWhitespace = false;
                     }
                     sb.appendCodePoint(c);
