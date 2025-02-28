@@ -27,11 +27,18 @@ plugins {
     id 'java-library'
 }
 
+def getBranchName() {
+    providers.exec {
+        commandLine("git", "branch", "--show-current")
+    }.standardOutput.asText.get().trim()
+}
+
 // https://github.com/vanniktech/gradle-maven-publish-plugin/issues/206
 // change domain before applying the plugin
 ext {
     RELEASE_REPOSITORY_URL = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
     SNAPSHOT_REPOSITORY_URL = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+    VERSION_NAME = 'poi-5' == getBranchName()? "${project.V}-poi5" : project.V
 }
 
 apply plugin: "com.vanniktech.maven.publish"
