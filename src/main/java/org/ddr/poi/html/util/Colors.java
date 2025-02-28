@@ -38,6 +38,7 @@ public class Colors {
     public static final String BLACK = "000000";
     public static final String WHITE = "FFFFFF";
     public static final String DEFAULT_COLOR = BLACK;
+    public static final String TRANSPARENT = "transparent";
 
     // https://developer.mozilla.org/zh-CN/docs/Web/CSS/color_value#%E8%89%B2%E5%BD%A9%E5%85%B3%E9%94%AE%E5%AD%97
     static {

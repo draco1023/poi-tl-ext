@@ -138,7 +138,7 @@ public class TableRenderer implements ElementRenderer {
                         columnIndex += entry.getValue().getColumn();
                         entry.getValue().setEnabled(false);
                         // 合并行也需要生成单元格
-                        addVMergeCell(row, c, entry.getValue());
+                        addVMergeCell(context, row, c, entry.getValue());
                         vMergeCount++;
                     }
                 }
@@ -244,7 +244,7 @@ public class TableRenderer implements ElementRenderer {
                     span.setEnabled(true);
                 }
                 if (columnIndex <= spanColumnIndex && columnIndex < colWidthMap.size()) {
-                    addVMergeCell(row, columnIndex, span);
+                    addVMergeCell(context, row, columnIndex, span);
                     columnIndex += span.getColumn();
                 }
             }
@@ -455,11 +455,11 @@ public class TableRenderer implements ElementRenderer {
      * @param columnIndex 列索引
      * @param span 跨行列参数
      */
-    private void addVMergeCell(XWPFTableRow row, int columnIndex, Span span) {
+    private void addVMergeCell(HtmlRenderContext context, XWPFTableRow row, int columnIndex, Span span) {
         XWPFTableCell cell = createCell(row, columnIndex);
         CTTcPr ctTcPr = RenderUtils.getTcPr(cell.getCTTc());
         ctTcPr.addNewVMerge();
-        RenderUtils.setBorder(cell, span.getStyle());
+        RenderUtils.setBorder(context, cell, span.getStyle());
         if (span.getColumn() > 1) {
             ctTcPr.addNewGridSpan().setVal(BigInteger.valueOf(span.getColumn()));
         }
