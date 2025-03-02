@@ -98,8 +98,7 @@
 	                     $ndCur/self::mml:mn[not(child::mml:mglyph)] |
 	                     $ndCur/self::mml:mo[not(child::mml:mglyph)] |
 	                     $ndCur/self::mml:ms[not(child::mml:mglyph)] |
-                       $ndCur/self::mml:mtext[not(child::mml:mglyph)]">1
-            </xsl:when>
+                       $ndCur/self::mml:mtext[not(child::mml:mglyph)]">1</xsl:when>
             <xsl:otherwise>0</xsl:otherwise>
         </xsl:choose>
     </xsl:template>
@@ -121,8 +120,7 @@
         </xsl:variable>
         <xsl:choose>
             <xsl:when test="count($ndCur/preceding-sibling::*)=0
-											or $fPrecSibNonGlyphToken=0">1
-            </xsl:when>
+											or $fPrecSibNonGlyphToken=0">1</xsl:when>
             <xsl:otherwise>0</xsl:otherwise>
         </xsl:choose>
     </xsl:template>
@@ -146,8 +144,7 @@
         <xsl:choose>
             <xsl:when test="preceding-sibling::*[1][self::mml:munder or self::mml:mover or self::mml:munderover or
                                                     self::mml:msub or self::mml:msup or self::mml:msubsup]
-							      and $fNary='true'">1
-            </xsl:when>
+							      and $fNary='true'">1</xsl:when>
             <xsl:otherwise>0</xsl:otherwise>
         </xsl:choose>
     </xsl:template>
@@ -1173,8 +1170,7 @@
             <xsl:when test="string-length($sLowerLineThickness)=0
                       or $sLowerLineThickness='thin'
                       or $sLowerLineThickness='medium'
-                      or $sLowerLineThickness='thick'">1
-            </xsl:when>
+                      or $sLowerLineThickness='thick'">1</xsl:when>
             <xsl:otherwise>
                 <xsl:variable name="fStrContainsNonZeroDigit">
                     <xsl:call-template name="FStrContainsNonZeroDigit">
@@ -1277,8 +1273,7 @@
                        box. -->
                                     <xsl:when test="contains($sLowerCaseNotation, 'box')
                                   or contains($sLowerCaseNotation, 'circle')
-                                  or contains($sLowerCaseNotation, 'roundedbox')">1
-                                    </xsl:when>
+                                  or contains($sLowerCaseNotation, 'roundedbox')">1</xsl:when>
                                     <xsl:otherwise>0</xsl:otherwise>
                                 </xsl:choose>
                             </xsl:variable>
@@ -1473,8 +1468,7 @@
             <xsl:when test="$ndCur/self::mml:mrow
                       and count($ndCur/*)=3
                       and $ndCur/*[2][self::mml:mo]
-                      and $sNdText='/'">1
-            </xsl:when>
+                      and $sNdText='/'">1</xsl:when>
             <xsl:otherwise>0</xsl:otherwise>
         </xsl:choose>
     </xsl:template>
@@ -1515,8 +1509,7 @@
             <xsl:when test="count($ndCur/*)=3
 								      and $ndCur/self::*[self::mml:mrow]
                       and $ndCur/*[2][self::mml:mo]
-                      and $sNdText='&#x02061;'">1
-            </xsl:when>
+                      and $sNdText='&#x02061;'">1</xsl:when>
             <xsl:otherwise>0</xsl:otherwise>
         </xsl:choose>
     </xsl:template>
@@ -1730,8 +1723,7 @@
         </xsl:variable>
         <xsl:variable name="fAccent">
             <xsl:choose>
-                <xsl:when test="$sLowerCaseMoAccent='true' or ($sLowerCaseMoAccent='' and $sLowerCaseAccent='true')">1
-                </xsl:when>
+                <xsl:when test="$sLowerCaseMoAccent='true' or ($sLowerCaseMoAccent='' and $sLowerCaseAccent='true')">1</xsl:when>
                 <xsl:otherwise>0</xsl:otherwise>
             </xsl:choose>
         </xsl:variable>
@@ -2808,8 +2800,7 @@
                       and (not($ndCur/@mml:rowlines) or $ndCur/@mml:rowlines='' or $ndCur/@mml:rowlines='none')
 								      and not($ndCur/mml:mtr[count(mml:mtd) &gt; 1])
 											and not($ndCur/mml:mtr[count(mml:mtd) &lt; 1])
-								      and not($ndCur/mml:mlabeledtr)">1
-            </xsl:when>
+								      and not($ndCur/mml:mlabeledtr)">1</xsl:when>
             <xsl:otherwise>0</xsl:otherwise>
         </xsl:choose>
     </xsl:template>
@@ -3817,8 +3808,7 @@
                             or $chr='&#x22C0;'
                             or $chr='&#x22C1;'
                             or $chr='&#x22C2;'
-                            or $chr='&#x22C3;'">1
-                        </xsl:when>
+                            or $chr='&#x22C3;'">1</xsl:when>
                         <xsl:otherwise>0</xsl:otherwise>
                     </xsl:choose>
                 </xsl:attribute>
