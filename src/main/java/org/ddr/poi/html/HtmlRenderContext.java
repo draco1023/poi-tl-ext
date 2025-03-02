@@ -53,6 +53,7 @@ import org.ddr.poi.html.util.NumberingContext;
 import org.ddr.poi.html.util.RenderUtils;
 import org.ddr.poi.html.util.WhiteSpaceRule;
 import org.ddr.poi.html.util.XWPFParagraphRuns;
+import org.ddr.poi.math.MathMLUtils;
 import org.ddr.poi.util.XmlUtils;
 import org.jsoup.internal.StringUtil;
 import org.jsoup.nodes.Document;
@@ -73,6 +74,7 @@ import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.STAlignH
 import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.STAlignV;
 import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.STRelFromH;
 import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.STRelFromV;
+import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.STWrapText;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTColor;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDrawing;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTFonts;
@@ -101,12 +103,15 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.STVerticalAlignRun
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.xml.namespace.QName;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -136,17 +141,17 @@ public class HtmlRenderContext extends RenderContext<String> {
     /**
      * 父容器（子元素通常为段落/表格）栈，主要用于渲染HTML表格时父容器的切换
      */
-    private LinkedList<IBody> ancestors = new LinkedList<>();
+    private final LinkedList<IBody> ancestors = new LinkedList<>();
 
     /**
      * 行内样式栈，最近声明的样式最先生效
      */
-    private LinkedList<InlineStyle> inlineStyles = new LinkedList<>();
+    private final LinkedList<InlineStyle> inlineStyles = new LinkedList<>();
 
     /**
      * 字号栈，一些相对大小的字号值将被进行换算
      */
-    private LinkedList<Integer> fontSizesInHalfPoints = new LinkedList<>();
+    private final LinkedList<Integer> fontSizesInHalfPoints = new LinkedList<>();
 
     /**
      * 列表上下文，用于处理嵌套列表
@@ -219,7 +224,7 @@ public class HtmlRenderContext extends RenderContext<String> {
     /**
      * 全局xml指针，保证其总是处于将要插入内容的位置，仅在需要移动之前进行push，适时pop还原位置
      */
-    private XmlCursor globalCursor;
+    private final XmlCursor globalCursor;
 
     /**
      * 防重段落
@@ -230,6 +235,11 @@ public class HtmlRenderContext extends RenderContext<String> {
      * 同一段落内的前一个文本节点
      */
     private TextWrapper previousText;
+
+    /**
+     * 前一个图片所在节点
+     */
+    private CTR previousDrawingRun;
 
     /**
      * 构造方法
@@ -436,7 +446,49 @@ public class HtmlRenderContext extends RenderContext<String> {
         }
         markDedupe(xwpfParagraph);
         previousText = null;
+        adjustPicture();
         return xwpfParagraph;
+    }
+
+    private void adjustPicture() {
+        if (previousDrawingRun != null) {
+            XmlCursor xmlCursor = previousDrawingRun.newCursor();
+            List<CTDrawing> drawings = new ArrayList<>(previousDrawingRun.getDrawingList());
+            boolean hasText = false;
+            while (xmlCursor.toPrevSibling()) {
+                if (XmlUtils.R_QNAME.equals(xmlCursor.getName())) {
+                    CTR ctr = (CTR) xmlCursor.getObject();
+                    for (int i = 0, l = ctr.sizeOfTArray(); i < l; i++) {
+                        CTText ctText = ctr.getTArray(i);
+                        if (StringUtils.isNotBlank(ctText.getStringValue())) {
+                            hasText = true;
+                            break;
+                        }
+                    }
+                    for (int i = 0, l = ctr.sizeOfDrawingArray(); i < l; i++) {
+                        drawings.add(ctr.getDrawingArray(i));
+                    }
+                } else if (MathMLUtils.OMATH_QNAME.equals(xmlCursor.getName())) {
+                    hasText = true;
+                }
+            }
+            if (!hasText) {
+                for (CTDrawing drawing : drawings) {
+                    CTAnchor ctAnchor = RenderUtils.inlineToAnchor(drawing);
+                    ctAnchor.addNewWrapTopAndBottom();
+
+                    CTPosH ctPosH = ctAnchor.addNewPositionH();
+                    ctPosH.setRelativeFrom(STRelFromH.MARGIN);
+                    ctPosH.setAlign(STAlignH.LEFT);
+
+                    CTPosV ctPosV = ctAnchor.addNewPositionV();
+                    ctPosV.setRelativeFrom(STRelFromV.PARAGRAPH);
+                    ctPosV.setAlign(STAlignV.TOP);
+                }
+            }
+            xmlCursor.dispose();
+            previousDrawingRun = null;
+        }
     }
 
     /**
@@ -1045,10 +1097,13 @@ public class HtmlRenderContext extends RenderContext<String> {
         } else if (isSvg || floated) {
             drawing = ctr.getDrawingArray(ctr.sizeOfDrawingArray() - 1);
         }
+        previousDrawingRun = ctr;
 
         if (drawing != null && drawing.sizeOfInlineArray() > 0) {
             if (floated) {
+                previousDrawingRun = null;
                 CTAnchor ctAnchor = RenderUtils.inlineToAnchor(drawing);
+                ctAnchor.addNewWrapSquare().setWrapText(STWrapText.LARGEST);
 
                 CTPosH ctPosH = ctAnchor.addNewPositionH();
                 ctPosH.setRelativeFrom(STRelFromH.MARGIN);
@@ -1226,6 +1281,7 @@ public class HtmlRenderContext extends RenderContext<String> {
         for (Node node : body.childNodes()) {
             renderNode(node);
         }
+        globalCursor.dispose();
     }
 
     public void renderNode(Node node) {
@@ -1473,13 +1529,19 @@ public class HtmlRenderContext extends RenderContext<String> {
         pCursor.toEndToken();
         rCursor.pop();
         rCursor.toFirstChild();
-        while (!ctr.equals(rCursor.getObject())) {
-            if (XmlUtils.PPR_QNAME.equals(rCursor.getName())) {
+        while (true) {
+            XmlObject object = rCursor.getObject();
+            if (ctr == object) break;
+            QName name = rCursor.getName();
+            if (XmlUtils.PPR_QNAME.equals(name)) {
                 rCursor.copyXml(pCursor);
                 rCursor.toNextSibling();
-            } else if (XmlUtils.BOOKMARK_START_QNAME.equals(rCursor.getName()) || XmlUtils.BOOKMARK_END_QNAME.equals(rCursor.getName())) {
+            } else if (XmlUtils.BOOKMARK_START_QNAME.equals(name) || XmlUtils.BOOKMARK_END_QNAME.equals(name)) {
                 rCursor.toNextSibling();
             } else {
+                if (previousDrawingRun == object) {
+                    previousDrawingRun = null;
+                }
                 // moveXml附带了toNextSibling的效果
                 rCursor.moveXml(pCursor);
             }
