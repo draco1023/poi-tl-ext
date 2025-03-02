@@ -55,7 +55,7 @@ import java.util.regex.Pattern;
 public class MathMLUtils {
     private static final Logger log = LoggerFactory.getLogger(MathMLUtils.class);
     private static final String MATH_FONT = "Cambria Math";
-    private static final QName OMATH_QNAME = new QName("http://schemas.openxmlformats.org/officeDocument/2006/math", "oMath");
+    public static final QName OMATH_QNAME = new QName("http://schemas.openxmlformats.org/officeDocument/2006/math", "oMath");
 
     private static final Pattern ESCAPED = Pattern.compile("&[a-zA-Z]+;");
 

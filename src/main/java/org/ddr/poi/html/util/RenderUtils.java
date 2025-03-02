@@ -35,7 +35,6 @@ import org.ddr.poi.html.HtmlRenderContext;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTPoint2D;
 import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.CTAnchor;
 import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.CTInline;
-import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.STWrapText;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBorder;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTColor;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDrawing;
@@ -455,7 +454,7 @@ public class RenderUtils {
     /**
      * 设置段落边框样式
      *
-     * @param context
+     * @param context 上下文
      * @param xwpfElement 段落
      * @param cssStyleDeclaration CSS边框样式声明
      * @param styleProperty CSS边框属性名称
@@ -905,9 +904,12 @@ public class RenderUtils {
         ctAnchor.setDocPr(ctInline.getDocPr());
         ctAnchor.setExtent(ctInline.getExtent());
         ctAnchor.setGraphic(ctInline.getGraphic());
+        if (ctInline.isSetCNvGraphicFramePr()) {
+            ctAnchor.setCNvGraphicFramePr(ctInline.getCNvGraphicFramePr());
+        }
         drawing.removeInline(0);
 
-        ctAnchor.setAllowOverlap(true);
+        ctAnchor.setAllowOverlap(false);
         ctAnchor.setBehindDoc(false);
         ctAnchor.setRelativeHeight(0);
         ctAnchor.setDistL(0);
@@ -916,7 +918,6 @@ public class RenderUtils {
         ctAnchor.setDistT(0);
         ctAnchor.setLayoutInCell(true);
         ctAnchor.setLocked(false);
-        ctAnchor.addNewWrapSquare().setWrapText(STWrapText.BOTH_SIDES);
 
         ctAnchor.setSimplePos2(false);
         CTPoint2D simplePos = ctAnchor.addNewSimplePos();
