@@ -212,54 +212,77 @@ public class Colors {
     }
 
     /**
-     * hsl颜色转换为颜色值
+     * hsl颜色转换为颜色值 <a href="https://www.w3.org/TR/css-color-4/#hsl-to-rgb">link</a>
      *
      * @param h hue 0 - 360
-     * @param s saturation 1 - 100
-     * @param l lightness 1 - 100
+     * @param s saturation 0 - 100
+     * @param l lightness 0 - 100
      * @return 颜色值
      */
     public static String fromHSL(float h, float s, float l) {
-        float q, p, r, g, b;
-
-        if (s == 0) {
-            r = g = b = l; // achromatic
-        } else {
-            q = l < 0.5 ? (l * (1 + s)) : (l + s - l * s);
-            p = 2 * l - q;
-            r = hue2rgb(p, q, h + 1.0f / 3);
-            g = hue2rgb(p, q, h);
-            b = hue2rgb(p, q, h - 1.0f / 3);
-        }
-        return toHexString(toInt(r), toInt(g), toInt(b));
+        float[] rgb = hsl2rgb(h, s, l);
+        return toHexString(toInt(rgb[0]), toInt(rgb[1]), toInt(rgb[2]));
     }
 
-    private static float hue2rgb(float p, float q, float h) {
+    private static float[] hsl2rgb(float h, float s, float l) {
+        h = h % 360;
         if (h < 0) {
-            h += 1;
+            h += 360;
         }
+        s /= 100;
+        l /= 100;
+        return new float[] {
+                hue2rgb(h, s, l, 0),
+                hue2rgb(h, s, l, 8),
+                hue2rgb(h, s, l, 4)
+        };
+    }
 
-        if (h > 1) {
-            h -= 1;
+    private static float hue2rgb(float h, float s, float l, int n) {
+        float k = (n + h / 30) % 12;
+        float a = s * Math.min(l, 1 - l);
+        return l - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1)));
+    }
+
+    /**
+     * hwb颜色转换为颜色值 <a href="https://www.w3.org/TR/css-color-4/#hwb-to-rgb">link</a>
+     *
+     * @param h hue 0 - 360
+     * @param w whiteness 0 - 100
+     * @param b blackness 0 - 100
+     * @return 颜色值
+     */
+    public static String fromHWB(float h, float w, float b) {
+        w /= 100;
+        b /= 100;
+        if (w + b >= 1) {
+            int gray = toInt(w / (w + b));
+            return toHexString(gray, gray, gray);
         }
-
-        if (6 * h < 1) {
-            return p + ((q - p) * 6 * h);
+        float[] rgb = hsl2rgb(h, 100, 50);
+        for (int i = 0; i < 3; i++) {
+            rgb[i] *= (1 - w - b);
+            rgb[i] += w;
         }
-
-        if (2 * h < 1) {
-            return q;
-        }
-
-        if (3 * h < 2) {
-            return p + ((q - p) * 6 * ((2.0f / 3.0f) - h));
-        }
-
-        return p;
+        return toHexString(toInt(rgb[0]), toInt(rgb[1]), toInt(rgb[2]));
     }
 
     private static int toInt(float f) {
         return (int) (f * 255 + 0.5);
+    }
+
+    private static float degrees(String s) {
+        if (s.endsWith("grad")) {
+            return Float.parseFloat(s.substring(0, s.length() - 4)) * 0.9f;
+        } else if (s.endsWith("rad")) {
+            return (float) (Double.parseDouble(s.substring(0, s.length() - 3)) * 180 / Math.PI);
+        } else if (s.endsWith("turn")) {
+            return Float.parseFloat(s.substring(0, s.length() - 4)) * 360;
+        } else if (s.endsWith("deg")) {
+            return Float.parseFloat(s.substring(0, s.length() - 3));
+        } else {
+            return Float.parseFloat(s);
+        }
     }
 
     /**
@@ -308,7 +331,11 @@ public class Colors {
 //            color: rgba(34.6 12 64 / 30%);
             String[] array = StringUtils.split(StringUtils.substringBetween(style, "(", ")"), ", /");
             if (array != null && array.length >= 3) {
-                return toHexString((int) Float.parseFloat(array[0]), (int) Float.parseFloat(array[1]), (int) Float.parseFloat(array[2]));
+                try {
+                    return toHexString((int) Float.parseFloat(array[0]), (int) Float.parseFloat(array[1]), (int) Float.parseFloat(array[2]));
+                } catch (NumberFormatException e) {
+                    warn(style);
+                }
             } else {
                 warn(style);
             }
@@ -322,12 +349,30 @@ public class Colors {
             String[] array = StringUtils.split(StringUtils.substringBetween(style, "(", ")"), ", /");
             if (array != null && array.length >= 3
                     && array[1].endsWith(HtmlConstants.PERCENT) && array[2].endsWith(HtmlConstants.PERCENT)) {
-                float h = Float.parseFloat(array[0]);
+                float h = degrees(array[0]);
                 String ss = array[1];
                 float s = Float.parseFloat(ss.substring(0, ss.length() - 1)) / 100;
                 String ls = array[2];
                 float l = Float.parseFloat(ls.substring(0, ls.length() - 1)) / 100;
                 return fromHSL(h, s, l);
+            } else {
+                warn(style);
+            }
+        } else if (style.startsWith("hwb")) {
+//            color: hwb(90 10% 10%);
+//            color: hwb(90 10% 10% / 0.5);
+//            color: hwb(90deg 10% 10%);
+//            color: hwb(1.5708rad 60% 0%);
+//            color: hwb(0.25turn 0% 40% / 50%);
+            String[] array = StringUtils.split(StringUtils.substringBetween(style, "(", ")"), ", /");
+            if (array != null && array.length >= 3
+                    && array[1].endsWith(HtmlConstants.PERCENT) && array[2].endsWith(HtmlConstants.PERCENT)) {
+                float h = degrees(array[0]);
+                String ws = array[1];
+                float w = Float.parseFloat(ws.substring(0, ws.length() - 1)) / 100;
+                String bs = array[2];
+                float b = Float.parseFloat(bs.substring(0, bs.length() - 1)) / 100;
+                return fromHWB(h, w, b);
             } else {
                 warn(style);
             }
@@ -362,6 +407,7 @@ public class Colors {
         return style.startsWith(HtmlConstants.SHARP)
                 || style.startsWith("rgb")
                 || style.startsWith("hsl")
+                || style.startsWith("hwb")
                 || COLOR_MAP.containsKey(style);
     }
 }
