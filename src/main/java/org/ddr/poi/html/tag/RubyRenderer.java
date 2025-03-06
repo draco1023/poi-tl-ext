@@ -65,7 +65,7 @@ public class RubyRenderer implements ElementRenderer {
                     int fontSize = context.getGlobalFontSize() == null
                             ? context.getInheritedFontSizeInHalfPoints() : context.getGlobalFontSize().intValue();
                     fontSize = (fontSize + 1) / 2;
-                    ctText.setStringValue("EQ \\* jc0 \\* hps" + fontSize + " \\o \\ad(\\s \\up 9(" + rt + "),"
+                    ctText.setStringValue("EQ \\* jc0 \\* hps" + fontSize + " \\o \\ad(\\s \\up " + (fontSize - 1) + "(" + rt + "),"
                             + StringUtil.releaseBuilder(sb).trim() + ")");
                     sb = StringUtil.borrowBuilder();
 
