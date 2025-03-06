@@ -1529,6 +1529,15 @@ public class HtmlRenderContext extends RenderContext<String> {
         pCursor.toEndToken();
         rCursor.pop();
         rCursor.toFirstChild();
+
+        XmlObject previousRun = null;
+        if (previousText != null) {
+            XmlCursor tCursor = previousText.getText().newCursor();
+            tCursor.toParent();
+            previousRun = tCursor.getObject();
+            tCursor.dispose();
+        }
+
         while (true) {
             XmlObject object = rCursor.getObject();
             if (ctr == object) break;
@@ -1541,6 +1550,9 @@ public class HtmlRenderContext extends RenderContext<String> {
             } else {
                 if (previousDrawingRun == object) {
                     previousDrawingRun = null;
+                }
+                if (previousRun == object) {
+                    previousText = null;
                 }
                 // moveXml附带了toNextSibling的效果
                 rCursor.moveXml(pCursor);
