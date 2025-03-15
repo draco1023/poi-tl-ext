@@ -1084,8 +1084,11 @@ public class HtmlRenderContext extends RenderContext<String> {
         String cssFloat = styleDeclaration.getPropertyValue(HtmlConstants.CSS_FLOAT);
         boolean floatLeft = HtmlConstants.LEFT.equals(cssFloat);
         boolean floatRight = !floatLeft && HtmlConstants.RIGHT.equals(cssFloat);
+        boolean floatCenter = !floatLeft && !floatRight
+                && HtmlConstants.AUTO.equals(styleDeclaration.getPropertyValue(HtmlConstants.CSS_MARGIN_LEFT))
+                && HtmlConstants.AUTO.equals(styleDeclaration.getPropertyValue(HtmlConstants.CSS_MARGIN_RIGHT));
         // vertical-align seems not working
-        boolean floated = floatLeft || floatRight;
+        boolean floated = floatLeft || floatRight || floatCenter;
 
         CTDrawing drawing = null;
         if (r != ctr) {
@@ -1103,11 +1106,17 @@ public class HtmlRenderContext extends RenderContext<String> {
             if (floated) {
                 previousDrawingRun = null;
                 CTAnchor ctAnchor = RenderUtils.inlineToAnchor(drawing);
-                ctAnchor.addNewWrapSquare().setWrapText(STWrapText.LARGEST);
-
                 CTPosH ctPosH = ctAnchor.addNewPositionH();
                 ctPosH.setRelativeFrom(STRelFromH.MARGIN);
-                ctPosH.setAlign(floatRight ? STAlignH.RIGHT : STAlignH.LEFT);
+
+                if (floatCenter) {
+                    moveContentToNewPrevParagraph(ctr);
+                    ctAnchor.addNewWrapTopAndBottom();
+                    ctPosH.setAlign(STAlignH.CENTER);
+                } else {
+                    ctAnchor.addNewWrapSquare().setWrapText(STWrapText.LARGEST);
+                    ctPosH.setAlign(floatRight ? STAlignH.RIGHT : STAlignH.LEFT);
+                }
 
                 CTPosV ctPosV = ctAnchor.addNewPositionV();
                 ctPosV.setRelativeFrom(STRelFromV.PARAGRAPH);
@@ -1320,7 +1329,7 @@ public class HtmlRenderContext extends RenderContext<String> {
             }
             if (!isBlocked()) {
                 // 复制段落中占位符之前的部分内容
-                moveContentToNewPrevParagraph();
+                moveContentToNewPrevParagraph(getRun().getCTR());
             }
             incrementBlockLevel();
             blocked = true;
@@ -1502,8 +1511,7 @@ public class HtmlRenderContext extends RenderContext<String> {
         }
     }
 
-    private void moveContentToNewPrevParagraph() {
-        CTR ctr = getRun().getCTR();
+    private void moveContentToNewPrevParagraph(CTR ctr) {
         XmlCursor rCursor = ctr.newCursor();
         boolean hasPrevSibling = false;
         while (rCursor.toPrevSibling()) {

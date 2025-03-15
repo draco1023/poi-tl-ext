@@ -190,6 +190,7 @@ public interface HtmlConstants {
     String TOP = "top";
     String BOTTOM = "bottom";
     String MIDDLE = "middle";
+    String AUTO = "auto";
 
     String XX_SMALL = "xx-small";
     String X_SMALL = "x-small";
