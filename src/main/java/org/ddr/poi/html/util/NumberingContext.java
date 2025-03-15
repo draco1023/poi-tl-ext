@@ -57,7 +57,7 @@ public class NumberingContext {
     private int nextNumberingLevel;
 
     private List<ListStyle> listStyles;
-    private TreeMap<String, BigInteger> numberIdMap = new TreeMap<>(Collections.reverseOrder());
+    private final TreeMap<String, BigInteger> numberIdMap = new TreeMap<>(Collections.reverseOrder());
     private List<XWPFParagraph> numberingParagraphs;
 
     public NumberingContext(XWPFDocument document) {
@@ -104,6 +104,7 @@ public class NumberingContext {
         if (nextNumberingLevel == 0) {
             numberingParagraphs = null;
             listStyles = null;
+            numberIdMap.clear();
         }
     }
 
