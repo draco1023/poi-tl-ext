@@ -17,6 +17,7 @@
 package org.ddr.poi.html.util;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.poi.xwpf.usermodel.BodyType;
 import org.apache.poi.xwpf.usermodel.XWPFAbstractNum;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFNumbering;
@@ -25,6 +26,7 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTAbstractNum;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTFonts;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTInd;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTLvl;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STHint;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STJc;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STLevelSuffix;
@@ -119,6 +121,12 @@ public class NumberingContext {
             return;
         }
         paragraph.setNumILvl(BigInteger.valueOf(nextNumberingLevel - 1));
+        if (paragraph.getPartType() == BodyType.TABLECELL) {
+            CTPPr pPr = RenderUtils.getPPr(paragraph.getCTP());
+            if (!pPr.isSetInd()) {
+                RenderUtils.getInd(pPr).setFirstLine(BigInteger.ZERO);
+            }
+        }
         numberingParagraphs.add(paragraph);
     }
 
