@@ -512,88 +512,137 @@ public class RenderUtils {
         }
     }
 
+    public static CTTblBorders getTblBorders(CTTbl tbl) {
+        CTTblPr tblPr = getTblPr(tbl);
+        return getTblBorders(tblPr);
+    }
+
     private static CTBorder getTop(Object e) {
         if (e instanceof XWPFParagraph) {
             XWPFParagraph paragraph = (XWPFParagraph) e;
-            CTPPr pPr = getPPr(paragraph.getCTP());
-            CTPBdr pBdr = getPBdr(pPr);
-            return pBdr.isSetTop() ? pBdr.getTop() : pBdr.addNewTop();
+            return getParagraphTop(paragraph.getCTP());
         } else if (e instanceof XWPFTable) {
             XWPFTable table = (XWPFTable) e;
-            CTTblPr tblPr = getTblPr(table.getCTTbl());
-            CTTblBorders tblBorders = getTblBorders(tblPr);
-            return tblBorders.isSetTop() ? tblBorders.getTop() : tblBorders.addNewTop();
+            return getTableTop(table.getCTTbl());
         } else if (e instanceof XWPFTableCell) {
             XWPFTableCell cell = (XWPFTableCell) e;
-            CTTcPr tcPr = getTcPr(cell.getCTTc());
-            CTTcBorders tcBorders = getTcBorders(tcPr);
-            return tcBorders.isSetTop() ? tcBorders.getTop() : tcBorders.addNewTop();
+            return getTableCellTop(cell.getCTTc());
         } else {
             throw new UnsupportedOperationException("Can not get top border of " + e.getClass().getName());
         }
     }
 
+    public static CTBorder getParagraphTop(CTP paragraph) {
+        CTPPr pPr = getPPr(paragraph);
+        CTPBdr pBdr = getPBdr(pPr);
+        return pBdr.isSetTop() ? pBdr.getTop() : pBdr.addNewTop();
+    }
+
+    public static CTBorder getTableTop(CTTbl table) {
+        CTTblBorders tblBorders = getTblBorders(table);
+        return tblBorders.isSetTop() ? tblBorders.getTop() : tblBorders.addNewTop();
+    }
+
+    public static CTBorder getTableCellTop(CTTc cell) {
+        CTTcPr tcPr = getTcPr(cell);
+        CTTcBorders tcBorders = getTcBorders(tcPr);
+        return tcBorders.isSetTop() ? tcBorders.getTop() : tcBorders.addNewTop();
+    }
+
     private static CTBorder getRight(Object e) {
         if (e instanceof XWPFParagraph) {
             XWPFParagraph paragraph = (XWPFParagraph) e;
-            CTPPr pPr = getPPr(paragraph.getCTP());
-            CTPBdr pBdr = getPBdr(pPr);
-            return pBdr.isSetRight() ? pBdr.getRight() : pBdr.addNewRight();
+            return getParagraphRight(paragraph.getCTP());
         } else if (e instanceof XWPFTable) {
             XWPFTable table = (XWPFTable) e;
-            CTTblPr tblPr = getTblPr(table.getCTTbl());
-            CTTblBorders tblBorders = getTblBorders(tblPr);
-            return tblBorders.isSetRight() ? tblBorders.getRight() : tblBorders.addNewRight();
+            return getTableRight(table.getCTTbl());
         } else if (e instanceof XWPFTableCell) {
             XWPFTableCell cell = (XWPFTableCell) e;
-            CTTcPr tcPr = getTcPr(cell.getCTTc());
-            CTTcBorders tcBorders = getTcBorders(tcPr);
-            return tcBorders.isSetRight() ? tcBorders.getRight() : tcBorders.addNewRight();
+            return getTableCellRight(cell.getCTTc());
         } else {
             throw new UnsupportedOperationException("Can not get right border of " + e.getClass().getName());
         }
     }
 
+    public static CTBorder getParagraphRight(CTP paragraph) {
+        CTPPr pPr = getPPr(paragraph);
+        CTPBdr pBdr = getPBdr(pPr);
+        return pBdr.isSetRight() ? pBdr.getRight() : pBdr.addNewRight();
+    }
+
+    public static CTBorder getTableRight(CTTbl tbl) {
+        CTTblBorders tblBorders = getTblBorders(tbl);
+        return tblBorders.isSetRight() ? tblBorders.getRight() : tblBorders.addNewRight();
+    }
+
+    public static CTBorder getTableCellRight(CTTc cell) {
+        CTTcPr tcPr = getTcPr(cell);
+        CTTcBorders tcBorders = getTcBorders(tcPr);
+        return tcBorders.isSetRight() ? tcBorders.getRight() : tcBorders.addNewRight();
+    }
+
     private static CTBorder getBottom(Object e) {
         if (e instanceof XWPFParagraph) {
             XWPFParagraph paragraph = (XWPFParagraph) e;
-            CTPPr pPr = getPPr(paragraph.getCTP());
-            CTPBdr pBdr = getPBdr(pPr);
-            return pBdr.isSetBottom() ? pBdr.getBottom() : pBdr.addNewBottom();
+            return getParagraphBottom(paragraph.getCTP());
         } else if (e instanceof XWPFTable) {
             XWPFTable table = (XWPFTable) e;
-            CTTblPr tblPr = getTblPr(table.getCTTbl());
-            CTTblBorders tblBorders = getTblBorders(tblPr);
-            return tblBorders.isSetBottom() ? tblBorders.getBottom() : tblBorders.addNewBottom();
+            return getTableBottom(table.getCTTbl());
         } else if (e instanceof XWPFTableCell) {
             XWPFTableCell cell = (XWPFTableCell) e;
-            CTTcPr tcPr = getTcPr(cell.getCTTc());
-            CTTcBorders tcBorders = getTcBorders(tcPr);
-            return tcBorders.isSetBottom() ? tcBorders.getBottom() : tcBorders.addNewBottom();
+            return getTableCellBottom(cell.getCTTc());
         } else {
             throw new UnsupportedOperationException("Can not get bottom border of " + e.getClass().getName());
         }
     }
 
+    public static CTBorder getParagraphBottom(CTP paragraph) {
+        CTPPr pPr = getPPr(paragraph);
+        CTPBdr pBdr = getPBdr(pPr);
+        return pBdr.isSetBottom() ? pBdr.getBottom() : pBdr.addNewBottom();
+    }
+
+    public static CTBorder getTableBottom(CTTbl table) {
+        CTTblBorders tblBorders = getTblBorders(table);
+        return tblBorders.isSetBottom() ? tblBorders.getBottom() : tblBorders.addNewBottom();
+    }
+
+    public static CTBorder getTableCellBottom(CTTc cell) {
+        CTTcPr tcPr = getTcPr(cell);
+        CTTcBorders tcBorders = getTcBorders(tcPr);
+        return tcBorders.isSetBottom() ? tcBorders.getBottom() : tcBorders.addNewBottom();
+    }
+
     private static CTBorder getLeft(Object e) {
         if (e instanceof XWPFParagraph) {
             XWPFParagraph paragraph = (XWPFParagraph) e;
-            CTPPr pPr = getPPr(paragraph.getCTP());
-            CTPBdr pBdr = getPBdr(pPr);
-            return pBdr.isSetLeft() ? pBdr.getLeft() : pBdr.addNewLeft();
+            return getParagraphLeft(paragraph.getCTP());
         } else if (e instanceof XWPFTable) {
             XWPFTable table = (XWPFTable) e;
-            CTTblPr tblPr = getTblPr(table.getCTTbl());
-            CTTblBorders tblBorders = getTblBorders(tblPr);
-            return tblBorders.isSetLeft() ? tblBorders.getLeft() : tblBorders.addNewLeft();
+            return getTableLeft(table.getCTTbl());
         } else if (e instanceof XWPFTableCell) {
             XWPFTableCell cell = (XWPFTableCell) e;
-            CTTcPr tcPr = getTcPr(cell.getCTTc());
-            CTTcBorders tcBorders = getTcBorders(tcPr);
-            return tcBorders.isSetLeft() ? tcBorders.getLeft() : tcBorders.addNewLeft();
+            return getTableCellLeft(cell.getCTTc());
         } else {
             throw new UnsupportedOperationException("Can not get left border of " + e.getClass().getName());
         }
+    }
+
+    public static CTBorder getParagraphLeft(CTP paragraph) {
+        CTPPr pPr = getPPr(paragraph);
+        CTPBdr pBdr = getPBdr(pPr);
+        return pBdr.isSetLeft() ? pBdr.getLeft() : pBdr.addNewLeft();
+    }
+
+    public static CTBorder getTableLeft(CTTbl table) {
+        CTTblBorders tblBorders = getTblBorders(table);
+        return tblBorders.isSetLeft() ? tblBorders.getLeft() : tblBorders.addNewLeft();
+    }
+
+    public static CTBorder getTableCellLeft(CTTc cell) {
+        CTTcPr tcPr = getTcPr(cell);
+        CTTcBorders tcBorders = getTcBorders(tcPr);
+        return tcBorders.isSetLeft() ? tcBorders.getLeft() : tcBorders.addNewLeft();
     }
 
     /**
@@ -658,11 +707,10 @@ public class RenderUtils {
         boolean allNone = setBorder(context, table, cssStyleDeclaration);
         // 如果四边都是none则将单元格间的边框也置为none
         if (allNone) {
-            CTTblPr tblPr = getTblPr(table.getCTTbl());
-            CTTblBorders tblBorders = getTblBorders(tblPr);
-            CTBorder insideH = tblBorders.isSetInsideH() ? tblBorders.getInsideH() : tblBorders.addNewInsideH();
+            CTTblBorders tblBorders = getTblBorders(table.getCTTbl());
+            CTBorder insideH = getTblInsideH(tblBorders);
             insideH.setVal(STBorder.NONE);
-            CTBorder insideV = tblBorders.isSetInsideV() ? tblBorders.getInsideV() : tblBorders.addNewInsideV();
+            CTBorder insideV = getTblInsideV(tblBorders);
             insideV.setVal(STBorder.NONE);
         }
 
@@ -682,6 +730,14 @@ public class RenderUtils {
                 shd.setFill(color);
             }
         }
+    }
+
+    public static CTBorder getTblInsideV(CTTblBorders tblBorders) {
+        return tblBorders.isSetInsideV() ? tblBorders.getInsideV() : tblBorders.addNewInsideV();
+    }
+
+    public static CTBorder getTblInsideH(CTTblBorders tblBorders) {
+        return tblBorders.isSetInsideH() ? tblBorders.getInsideH() : tblBorders.addNewInsideH();
     }
 
 

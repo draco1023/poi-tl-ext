@@ -17,6 +17,7 @@
 package org.ddr.poi.html.tag;
 
 import com.steadystate.css.dom.CSSStyleDeclarationImpl;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.poi.util.Units;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
@@ -39,6 +40,7 @@ import org.ddr.poi.html.util.WhiteSpaceRule;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
 import org.jsoup.select.Elements;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBorder;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTRow;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTbl;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblGrid;
@@ -47,6 +49,7 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblWidth;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTc;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTVMerge;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STBorder;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STMerge;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STTblWidth;
 
@@ -107,6 +110,8 @@ public class TableRenderer implements ElementRenderer {
         int tableWidth = context.computeLengthInEMU(widthDeclaration, styleDeclaration.getMaxWidth(), containerWidth, containerWidth);
         int originWidth = !width.isValid() || width.isPercent() ? tableWidth : context.lengthToEMU(width);
 
+        reorderTableChildren(element);
+
         Element caption = JsoupUtils.firstChild(element, HtmlConstants.TAG_CAPTION);
         if (caption != null) {
             renderCaption(context, table, caption, tableWhiteSpace);
@@ -115,12 +120,23 @@ public class TableRenderer implements ElementRenderer {
         Element colgroup = JsoupUtils.firstChild(element, HtmlConstants.TAG_COLGROUP);
         List<ColumnStyle> columnStyles = extractColumnStyles(colgroup);
 
+        CTTbl ctTbl = table.getCTTbl();
+        handleTableProperties(element, ctTbl);
+
+        boolean groupsRules = HtmlConstants.GROUPS.equals(element.attr(HtmlConstants.ATTR_RULES));
         Elements trs = JsoupUtils.childRows(element);
         Map<Integer, Span> rowSpanMap = new TreeMap<>();
         TreeMap<Integer, CSSLength> colWidthMap = new TreeMap<>();
         LinkedHashSet<SpanWidth> spanWidths = new LinkedHashSet<>();
+        Element lastTrParent = null;
         for (int r = 0; r < trs.size(); r++) {
             Element tr = trs.get(r);
+            Element trParent = tr.parent();
+            boolean renderGroupsGap = false;
+            if (lastTrParent != trParent) {
+                renderGroupsGap = groupsRules && lastTrParent!= null;
+                lastTrParent = trParent;
+            }
             XWPFTableRow row = createRow(table, r);
 
             Elements tds = JsoupUtils.children(tr, HtmlConstants.TAG_TH, HtmlConstants.TAG_TD);
@@ -230,6 +246,10 @@ public class TableRenderer implements ElementRenderer {
                     ctTcPr.addNewGridSpan().setVal(BigInteger.valueOf(colspan));
                 }
 
+                if (renderGroupsGap) {
+                    RenderUtils.getTableCellTop(cell.getCTTc()).setVal(STBorder.SINGLE);
+                }
+
                 columnIndex += colspan;
             }
 
@@ -250,7 +270,6 @@ public class TableRenderer implements ElementRenderer {
             }
         }
 
-        CTTbl ctTbl = table.getCTTbl();
         CTTblGrid tblGrid = ctTbl.getTblGrid();
         if (tblGrid == null) {
             tblGrid = ctTbl.addNewTblGrid();
@@ -332,6 +351,144 @@ public class TableRenderer implements ElementRenderer {
         }
 
         return true;
+    }
+
+    private void reorderTableChildren(Element element) {
+        Elements theads = JsoupUtils.children(element, HtmlConstants.TAG_THEAD);
+        for (int i = theads.size() - 1; i >= 0; i--) {
+            Element thead = theads.get(i);
+            thead.remove();
+            element.prependChild(thead);
+        }
+        Elements tfoots = JsoupUtils.children(element, HtmlConstants.TAG_TFOOT);
+        for (Element tfoot : tfoots) {
+            tfoot.remove();
+            element.appendChild(tfoot);
+        }
+    }
+
+    /**
+     * <a href="https://www.w3.org/TR/html401/struct/tables.html#adef-border-TABLE">link</a>
+     */
+    private void handleTableProperties(Element element, CTTbl ctTbl) {
+        String frameValue = null;
+        String rulesValue = null;
+        int borderValue = 0;
+        if (element.hasAttr(HtmlConstants.BORDER)) {
+            String border = element.attr(HtmlConstants.BORDER);
+            frameValue = HtmlConstants.VOID;
+            rulesValue = HtmlConstants.NONE;
+            if (!"0".equals(border)) {
+                if (StringUtils.isNumeric(border) && !border.startsWith("0") && (borderValue = Integer.parseInt(border)) > 0) {
+                    frameValue = "";
+                } else {
+                    frameValue = HtmlConstants.BORDER;
+                }
+                rulesValue = HtmlConstants.ALL;
+            }
+        }
+        if (element.hasAttr(HtmlConstants.ATTR_FRAME)) {
+            frameValue = element.attr(HtmlConstants.ATTR_FRAME);
+        }
+        if (element.hasAttr(HtmlConstants.ATTR_RULES)) {
+            rulesValue = element.attr(HtmlConstants.ATTR_RULES);
+        }
+
+        if (frameValue != null) {
+            CTBorder tableTop = RenderUtils.getTableTop(ctTbl);
+            CTBorder tableBottom = RenderUtils.getTableBottom(ctTbl);
+            CTBorder tableLeft = RenderUtils.getTableLeft(ctTbl);
+            CTBorder tableRight = RenderUtils.getTableRight(ctTbl);
+            switch (frameValue) {
+                case HtmlConstants.VOID:
+                    tableTop.setVal(STBorder.NONE);
+                    tableBottom.setVal(STBorder.NONE);
+                    tableLeft.setVal(STBorder.NONE);
+                    tableRight.setVal(STBorder.NONE);
+                    break;
+                case HtmlConstants.ABOVE:
+                    tableTop.setVal(STBorder.SINGLE);
+                    tableBottom.setVal(STBorder.NONE);
+                    tableLeft.setVal(STBorder.NONE);
+                    tableRight.setVal(STBorder.NONE);
+                    break;
+                case HtmlConstants.BELOW:
+                    tableTop.setVal(STBorder.NONE);
+                    tableBottom.setVal(STBorder.SINGLE);
+                    tableLeft.setVal(STBorder.NONE);
+                    tableRight.setVal(STBorder.NONE);
+                    break;
+                case HtmlConstants.LHS:
+                    tableTop.setVal(STBorder.NONE);
+                    tableBottom.setVal(STBorder.NONE);
+                    tableLeft.setVal(STBorder.SINGLE);
+                    tableRight.setVal(STBorder.NONE);
+                    break;
+                case HtmlConstants.RHS:
+                    tableTop.setVal(STBorder.NONE);
+                    tableBottom.setVal(STBorder.NONE);
+                    tableLeft.setVal(STBorder.NONE);
+                    tableRight.setVal(STBorder.SINGLE);
+                    break;
+                case HtmlConstants.H_SIDES:
+                    tableTop.setVal(STBorder.SINGLE);
+                    tableBottom.setVal(STBorder.SINGLE);
+                    tableLeft.setVal(STBorder.NONE);
+                    tableRight.setVal(STBorder.NONE);
+                    break;
+                case HtmlConstants.V_SIDES:
+                    tableTop.setVal(STBorder.NONE);
+                    tableBottom.setVal(STBorder.NONE);
+                    tableLeft.setVal(STBorder.SINGLE);
+                    tableRight.setVal(STBorder.SINGLE);
+                    break;
+                case HtmlConstants.BOX:
+                case HtmlConstants.BORDER:
+                    tableTop.setVal(STBorder.SINGLE);
+                    tableBottom.setVal(STBorder.SINGLE);
+                    tableLeft.setVal(STBorder.SINGLE);
+                    tableRight.setVal(STBorder.SINGLE);
+                    break;
+                default:
+                    tableTop.setVal(STBorder.SINGLE);
+                    tableBottom.setVal(STBorder.SINGLE);
+                    tableLeft.setVal(STBorder.SINGLE);
+                    tableRight.setVal(STBorder.SINGLE);
+                    if (borderValue > 0) {
+                        long thickness = (long) RenderUtils.BORDER_WIDTH_PER_PX * borderValue;
+                        thickness = Math.min(thickness, RenderUtils.MAX_BORDER_WIDTH);
+                        BigInteger sz = BigInteger.valueOf(thickness);
+                        tableTop.setSz(sz);
+                        tableBottom.setSz(sz);
+                        tableLeft.setSz(sz);
+                        tableRight.setSz(sz);
+                    }
+                    break;
+            }
+        }
+
+        if (rulesValue != null) {
+            switch (rulesValue) {
+                case HtmlConstants.NONE:
+                case HtmlConstants.GROUPS:
+                    RenderUtils.getTblInsideH(RenderUtils.getTblBorders(ctTbl)).setVal(STBorder.NONE);
+                    RenderUtils.getTblInsideV(RenderUtils.getTblBorders(ctTbl)).setVal(STBorder.NONE);
+                    break;
+                case HtmlConstants.ROWS:
+                    RenderUtils.getTblInsideH(RenderUtils.getTblBorders(ctTbl)).setVal(STBorder.SINGLE);
+                    RenderUtils.getTblInsideV(RenderUtils.getTblBorders(ctTbl)).setVal(STBorder.NONE);
+                    break;
+                case HtmlConstants.COLS:
+                    RenderUtils.getTblInsideH(RenderUtils.getTblBorders(ctTbl)).setVal(STBorder.NONE);
+                    RenderUtils.getTblInsideV(RenderUtils.getTblBorders(ctTbl)).setVal(STBorder.SINGLE);
+                    break;
+                case HtmlConstants.ALL:
+                default:
+                    RenderUtils.getTblInsideH(RenderUtils.getTblBorders(ctTbl)).setVal(STBorder.SINGLE);
+                    RenderUtils.getTblInsideV(RenderUtils.getTblBorders(ctTbl)).setVal(STBorder.SINGLE);
+                    break;
+            }
+        }
     }
 
     private List<ColumnStyle> extractColumnStyles(Element colgroup) {
