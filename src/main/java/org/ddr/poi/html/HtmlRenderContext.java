@@ -92,7 +92,6 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTShd;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTStyle;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTbl;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblBorders;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTText;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTUnderline;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STBorder;
@@ -1354,8 +1353,7 @@ public class HtmlRenderContext extends RenderContext<String> {
 
                 if (container.getPartType() == BodyType.TABLECELL && isShowDefaultTableBorderInTableCell()) {
                     CTTbl ctTbl = xwpfTable.getCTTbl();
-                    CTTblPr tblPr = RenderUtils.getTblPr(ctTbl);
-                    CTTblBorders tblBorders = RenderUtils.getTblBorders(tblPr);
+                    CTTblBorders tblBorders = RenderUtils.getTblBorders(ctTbl);
                     tblBorders.addNewTop().setVal(STBorder.SINGLE);
                     tblBorders.addNewLeft().setVal(STBorder.SINGLE);
                     tblBorders.addNewBottom().setVal(STBorder.SINGLE);

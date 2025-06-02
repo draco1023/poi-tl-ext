@@ -101,6 +101,8 @@ public interface HtmlConstants {
     String ATTR_COLSPAN = "colspan";
     String ATTR_HREF = "href";
     String ATTR_TYPE = "type";
+    String ATTR_FRAME = "frame";
+    String ATTR_RULES = "rules";
     /**
      * 自定义属性：行索引
      */
@@ -267,6 +269,21 @@ public interface HtmlConstants {
 
     String INSIDE = "inside";
     String OUTSIDE = "outside";
+
+    String VOID = "void";
+    String ABOVE = "above";
+    String BELOW = "below";
+    String H_SIDES = "hsides";
+    String V_SIDES = "vsides";
+    String LHS = "lhs";
+    String RHS = "rhs";
+    String BOX = "box";
+    String BORDER = "border";
+
+    String GROUPS = "groups";
+    String ROWS = "rows";
+    String COLS = "cols";
+    String ALL = "all";
 
     Set<String> FONT_STYLES = Sets.newHashSet(NORMAL, ITALIC, OBLIQUE);
     Set<String> FONT_VARIANTS = Sets.newHashSet(NORMAL, SMALL_CAPS);
