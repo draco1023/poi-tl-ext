@@ -14,17 +14,9 @@
  * limitations under the License.
  */
 
-buildscript {
-    repositories {
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'com.vanniktech:gradle-maven-publish-plugin:0.14.2'
-    }
-}
-
 plugins {
     id 'java-library'
+    id 'io.github.sgtsilvio.gradle.maven-central-publishing' version '0.4.0'
 }
 
 def getBranchName() {
@@ -36,12 +28,8 @@ def getBranchName() {
 // https://github.com/vanniktech/gradle-maven-publish-plugin/issues/206
 // change domain before applying the plugin
 ext {
-    RELEASE_REPOSITORY_URL = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
-    SNAPSHOT_REPOSITORY_URL = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
     VERSION_NAME = 'poi-5' == getBranchName()? "${project.V}-poi5" : project.V
 }
-
-apply plugin: "com.vanniktech.maven.publish"
 
 repositories {
     mavenLocal()
@@ -92,13 +80,47 @@ javadoc {
         charSet 'UTF-8'
     }
 }
+javadoc.options.addBooleanOption('Xdoclint:none', true)
 
-// https://github.com/vanniktech/gradle-maven-publish-plugin/issues/206
-// for closeAndReleaseRepository task
-mavenPublish {
-    nexus {
-        baseUrl = "https://s01.oss.sonatype.org/service/local/"
-        repositoryUsername = mavenCentralRepositoryUsername
-        repositoryPassword = mavenCentralRepositoryPassword
+java {
+    withSourcesJar()
+    withJavadocJar()
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+            groupId = GROUP
+            artifactId = POM_ARTIFACT_ID
+            version = VERSION_NAME
+            pom {
+                name = POM_NAME
+                description = POM_DESCRIPTION
+                url = POM_URL
+                licenses {
+                    license {
+                        name = POM_LICENCE_NAME
+                        url = POM_LICENCE_URL
+                    }
+                }
+                developers {
+                    developer {
+                        id = POM_DEVELOPER_ID
+                        name = POM_DEVELOPER_NAME
+                        url = POM_DEVELOPER_URL
+                    }
+                }
+                scm {
+                    connection = POM_SCM_CONNECTION
+                    developerConnection = POM_SCM_DEV_CONNECTION
+                    url = POM_SCM_URL
+                }
+            }
+        }
     }
+}
+
+signing {
+    sign publishing.publications.maven
 }
