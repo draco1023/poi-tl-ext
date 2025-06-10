@@ -25,11 +25,12 @@ def getBranchName() {
     }.standardOutput.asText.get().trim()
 }
 
-// https://github.com/vanniktech/gradle-maven-publish-plugin/issues/206
-// change domain before applying the plugin
 ext {
     VERSION_NAME = 'poi-5' == getBranchName()? "${project.V}-poi5" : project.V
 }
+
+group = GROUP
+version = VERSION_NAME
 
 repositories {
     mavenLocal()
