@@ -155,6 +155,7 @@ public class HtmlRenderPolicy extends AbstractRenderPolicy<String> {
         htmlRenderContext.getNumberingContext().setHanging(config.getNumberingHanging());
         htmlRenderContext.getNumberingContext().setSpacing(config.getNumberingSpacing());
         htmlRenderContext.setShowDefaultTableBorderInTableCell(config.isShowDefaultTableBorderInTableCell());
+        htmlRenderContext.setMathRenderConfig(config.getMathRenderConfig());
 
         htmlRenderContext.renderDocument(document);
     }

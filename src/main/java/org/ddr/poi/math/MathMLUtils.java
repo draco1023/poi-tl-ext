@@ -55,7 +55,15 @@ import java.util.regex.Pattern;
 public class MathMLUtils {
     private static final Logger log = LoggerFactory.getLogger(MathMLUtils.class);
     private static final String MATH_FONT = "Cambria Math";
-    public static final QName OMATH_QNAME = new QName("http://schemas.openxmlformats.org/officeDocument/2006/math", "oMath");
+    public static final String MATH_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math";
+    public static final QName OMATH_QNAME = new QName(MATH_NS, "oMath");
+    public static final QName NARY_QNAME = new QName(MATH_NS, "nary");
+    public static final QName E_QNAME = new QName(MATH_NS, "e");
+    public static final QName PHANT_QNAME = new QName(MATH_NS, "phant");
+    public static final QName PHANT_PR_QNAME = new QName(MATH_NS, "phantPr");
+    public static final QName ZERO_WIDTH_QNAME = new QName(MATH_NS, "zeroWid");
+    public static final QName SHOW_QNAME = new QName(MATH_NS, "show");
+    public static final QName VALUE_QNAME = new QName(MATH_NS, "val");
 
     private static final Pattern ESCAPED = Pattern.compile("&[a-zA-Z]+;");
 
@@ -68,7 +76,7 @@ public class MathMLUtils {
      * @param ctr 占位符所属run，如果总是在末尾渲染可传null
      * @param math MathML字符串
      */
-    public static void renderTo(XWPFParagraph paragraph, CTR ctr, String math) {
+    public static void renderTo(XWPFParagraph paragraph, CTR ctr, String math, MathRenderConfig config) {
         if (log.isDebugEnabled()) {
             log.info("Start rendering MathML: {}", math);
         }
@@ -82,7 +90,7 @@ public class MathMLUtils {
             if (log.isDebugEnabled()) {
                 log.info("Output OMath: {}", omath);
             }
-            addMath(paragraph, ctr, omath);
+            addMath(paragraph, ctr, omath, config);
         } catch (IOException | SaxonApiException | XmlException e) {
             log.warn("Failed to render math: {}", math, e);
         }
@@ -141,19 +149,40 @@ public class MathMLUtils {
      * @param ctr 占位符所属run，如果总是在末尾渲染可传null
      * @param omath 由mathml转换得到的omath字符串
      */
-    private static void addMath(XWPFParagraph paragraph, CTR ctr, String omath) throws XmlException {
+    private static void addMath(XWPFParagraph paragraph, CTR ctr, String omath, MathRenderConfig config) throws XmlException {
         CTOMath ctoMath = CTOMath.Factory.parse(omath);
         // 老版本Office可能无法正常显示，强制设置公式字体
         XmlCursor xmlCursor = ctoMath.newCursor();
         while (xmlCursor.hasNextToken()) {
             XmlCursor.TokenType tokenType = xmlCursor.toNextToken();
             if (tokenType == XmlCursor.TokenType.START) {
-                if (XmlUtils.R_QNAME.equals(xmlCursor.getName())) {
+                QName qName = xmlCursor.getName();
+                if (XmlUtils.R_QNAME.equals(qName)) {
                     CTFonts ctFonts = ((org.openxmlformats.schemas.officeDocument.x2006.math.CTR) xmlCursor.getObject()).addNewRPr2().addNewRFonts();
                     ctFonts.setAscii(MATH_FONT);
-                    ctFonts.setEastAsia(MATH_FONT);
                     ctFonts.setHAnsi(MATH_FONT);
-                    ctFonts.setCs(MATH_FONT);
+                } else if (E_QNAME.equals(qName)) {
+                    if (!xmlCursor.toFirstChild()) {
+                        xmlCursor.push();
+                        xmlCursor.toParent();
+                        QName parentName = xmlCursor.getName();
+                        xmlCursor.pop();
+                        if (NARY_QNAME.equals(parentName)) {
+                            if (config.getEmptyEOfNaryOption() != EmptyEOfNaryDisplayMode.DEFAULT) {
+                                xmlCursor.toNextToken();
+                                xmlCursor.beginElement(PHANT_QNAME);
+                                xmlCursor.beginElement(PHANT_PR_QNAME);
+                                if (config.getEmptyEOfNaryOption().isZeroWidth()) {
+                                    xmlCursor.beginElement(ZERO_WIDTH_QNAME);
+                                    xmlCursor.toParent();
+                                }
+                                if (config.getEmptyEOfNaryOption().isHidden()) {
+                                    xmlCursor.beginElement(SHOW_QNAME);
+                                    xmlCursor.insertAttributeWithValue(VALUE_QNAME, "off");
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

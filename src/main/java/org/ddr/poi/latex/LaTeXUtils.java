@@ -10,6 +10,7 @@ import org.apache.xmlbeans.XmlCursor;
 import org.apache.xmlbeans.XmlObject;
 import org.ddr.poi.html.util.Colors;
 import org.ddr.poi.math.MathMLUtils;
+import org.ddr.poi.math.MathRenderConfig;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBookmark;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
@@ -87,8 +88,9 @@ public class LaTeXUtils {
      * @param paragraph 段落
      * @param ctr       目标run，如果总是在末尾渲染可传null
      * @param session   Snuggle会话
+     * @param config    公式渲染配置
      */
-    public static void renderTo(XWPFParagraph paragraph, CTR ctr, SnuggleSession session) {
+    public static void renderTo(XWPFParagraph paragraph, CTR ctr, SnuggleSession session, MathRenderConfig config) {
         CTR target = ctr;
         NodeList nodeList = session.buildDOMSubtree();
         int length = nodeList.getLength();
@@ -101,14 +103,14 @@ public class LaTeXUtils {
                 String math = XMLUtilities.serializeNode(node,
                         Initializer.SNUGGLE_ENGINE.getDefaultXMLStringOutputOptions());
 
-                MathMLUtils.renderTo(paragraph, target, math);
+                MathMLUtils.renderTo(paragraph, target, math, config);
             } else if (TAG_TAG.equals(node.getLocalName())) {
-                renderTag(paragraph, ctr, node);
+                renderTag(paragraph, ctr, node, config);
             }
         }
     }
 
-    private static void renderTag(XWPFParagraph paragraph, CTR ctr, Node node) {
+    private static void renderTag(XWPFParagraph paragraph, CTR ctr, Node node, MathRenderConfig config) {
         XmlCursor pCursor = paragraph.getCTP().newCursor();
         pCursor.push();
 
@@ -152,7 +154,7 @@ public class LaTeXUtils {
         // render math
         String math = XMLUtilities.serializeNode(node.getFirstChild(),
                 Initializer.SNUGGLE_ENGINE.getDefaultXMLStringOutputOptions());
-        MathMLUtils.renderTo(mathParagraph, mathParagraph.createRun().getCTR(), math);
+        MathMLUtils.renderTo(mathParagraph, mathParagraph.createRun().getCTR(), math, config);
 
         // render tag
         XWPFTableCell tagCell = row.createCell();
@@ -160,7 +162,7 @@ public class LaTeXUtils {
         XWPFParagraph tagParagraph = tagCell.getParagraphs().get(0);
         String tag = XMLUtilities.serializeNode(node.getLastChild(),
                 Initializer.SNUGGLE_ENGINE.getDefaultXMLStringOutputOptions());
-        MathMLUtils.renderTo(tagParagraph, tagParagraph.createRun().getCTR(), tag);
+        MathMLUtils.renderTo(tagParagraph, tagParagraph.createRun().getCTR(), tag, config);
     }
 
     private static class Initializer {

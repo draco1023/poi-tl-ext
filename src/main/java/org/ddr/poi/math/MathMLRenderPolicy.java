@@ -30,7 +30,20 @@ import org.jsoup.nodes.Element;
  * @since 2021-04-10 22:51
  */
 public class MathMLRenderPolicy extends AbstractRenderPolicy<String> {
+    private final MathRenderConfig config;
     private Element math;
+
+    public MathMLRenderPolicy() {
+        this(new MathRenderConfig());
+    }
+
+    public MathMLRenderPolicy(MathRenderConfig config) {
+        this.config = config;
+    }
+
+    public MathRenderConfig getConfig() {
+        return config;
+    }
 
     @Override
     protected boolean validate(String data) {
@@ -47,7 +60,7 @@ public class MathMLRenderPolicy extends AbstractRenderPolicy<String> {
             math.attr("xmlns", "http://www.w3.org/1998/Math/MathML");
         }
         String mathml = math.outerHtml();
-        MathMLUtils.renderTo((XWPFParagraph) context.getRun().getParent(), context.getRun().getCTR(), mathml);
+        MathMLUtils.renderTo((XWPFParagraph) context.getRun().getParent(), context.getRun().getCTR(), mathml, config);
     }
 
     @Override
