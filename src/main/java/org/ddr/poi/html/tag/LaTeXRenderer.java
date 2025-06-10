@@ -49,7 +49,7 @@ public class LaTeXRenderer implements ElementRenderer {
 
         SnuggleSession session = LaTeXUtils.createSession();
         LaTeXUtils.parse(session, latex);
-        LaTeXUtils.renderTo(context.getClosestParagraph(), null, session);
+        LaTeXUtils.renderTo(context.getClosestParagraph(), null, session, context.getMathRenderConfig());
 
         return false;
     }

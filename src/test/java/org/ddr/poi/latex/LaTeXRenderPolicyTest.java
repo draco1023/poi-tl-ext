@@ -2,6 +2,7 @@ package org.ddr.poi.latex;
 
 import com.deepoove.poi.XWPFTemplate;
 import com.deepoove.poi.config.Configure;
+import org.ddr.poi.math.EmptyEOfNaryDisplayMode;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -14,6 +15,7 @@ class LaTeXRenderPolicyTest {
     @Test
     void doRender() throws IOException {
         LaTeXRenderPolicy laTeXRenderPolicy = new LaTeXRenderPolicy();
+        laTeXRenderPolicy.getConfig().setEmptyEOfNaryOption(EmptyEOfNaryDisplayMode.ZERO_WIDTH_HIDDEN);
         Configure configure = Configure.builder()
                 .bind("math1", laTeXRenderPolicy)
                 .bind("math2", laTeXRenderPolicy)

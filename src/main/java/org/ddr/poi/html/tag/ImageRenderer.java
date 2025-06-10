@@ -139,7 +139,7 @@ public class ImageRenderer implements ElementRenderer {
                 try {
                     int endOfMath = data.indexOf(COMMENT_MATH_SUFFIX, startOfMath + COMMENT_MATH_PREFIX.length());
                     String math = data.substring(startOfMath + 12, endOfMath + 7);
-                    MathMLUtils.renderTo(context.getClosestParagraph(), context.newRun(), math);
+                    MathMLUtils.renderTo(context.getClosestParagraph(), context.newRun(), math, context.getMathRenderConfig());
                     return;
                 } catch (Exception e) {
                     log.warn("Failed to render math in wiris svg, will try to render as svg image: {}", data, e);

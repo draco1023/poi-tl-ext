@@ -4,6 +4,7 @@ import com.deepoove.poi.policy.AbstractRenderPolicy;
 import com.deepoove.poi.render.RenderContext;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.ddr.poi.math.MathRenderConfig;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
 import uk.ac.ed.ph.snuggletex.SnuggleSession;
 
@@ -14,7 +15,20 @@ import uk.ac.ed.ph.snuggletex.SnuggleSession;
  * @since 2021-04-14
  */
 public class LaTeXRenderPolicy extends AbstractRenderPolicy<String> {
+    private final MathRenderConfig config;
     private SnuggleSession session;
+
+    public LaTeXRenderPolicy() {
+        this(new MathRenderConfig());
+    }
+
+    public LaTeXRenderPolicy(MathRenderConfig config) {
+        this.config = config;
+    }
+
+    public MathRenderConfig getConfig() {
+        return config;
+    }
 
     @Override
     protected boolean validate(String data) {
@@ -31,7 +45,7 @@ public class LaTeXRenderPolicy extends AbstractRenderPolicy<String> {
     public void doRender(RenderContext<String> context) throws Exception {
         XWPFParagraph paragraph = (XWPFParagraph) context.getRun().getParent();
         CTR ctr = context.getRun().getCTR();
-        LaTeXUtils.renderTo(paragraph, ctr, session);
+        LaTeXUtils.renderTo(paragraph, ctr, session, config);
     }
 
     @Override

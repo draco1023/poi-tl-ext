@@ -54,6 +54,7 @@ import org.ddr.poi.html.util.RenderUtils;
 import org.ddr.poi.html.util.WhiteSpaceRule;
 import org.ddr.poi.html.util.XWPFParagraphRuns;
 import org.ddr.poi.math.MathMLUtils;
+import org.ddr.poi.math.MathRenderConfig;
 import org.ddr.poi.util.XmlUtils;
 import org.jsoup.internal.StringUtil;
 import org.jsoup.nodes.Document;
@@ -214,6 +215,10 @@ public class HtmlRenderContext extends RenderContext<String> {
      * 嵌套表格是否默认显示边框
      */
     private boolean showDefaultTableBorderInTableCell;
+    /**
+     * 数学公式渲染配置
+     */
+    private MathRenderConfig mathRenderConfig;
 
     /**
      * 块状元素深度计数器
@@ -1235,6 +1240,14 @@ public class HtmlRenderContext extends RenderContext<String> {
 
     public int getAvailablePageHeight() {
         return availablePageHeight;
+    }
+
+    public MathRenderConfig getMathRenderConfig() {
+        return mathRenderConfig;
+    }
+
+    public void setMathRenderConfig(MathRenderConfig mathRenderConfig) {
+        this.mathRenderConfig = mathRenderConfig;
     }
 
     public XWPFRun getCurrentRun() {

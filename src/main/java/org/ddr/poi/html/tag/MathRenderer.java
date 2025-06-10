@@ -47,7 +47,7 @@ public class MathRenderer implements ElementRenderer {
         String math = element.outerHtml();
         outputSettings.syntax(Syntax.html);
         math = MathMLUtils.normalize(math);
-        MathMLUtils.renderTo(context.getClosestParagraph(), context.newRun(), math);
+        MathMLUtils.renderTo(context.getClosestParagraph(), context.newRun(), math, context.getMathRenderConfig());
 
         return false;
     }

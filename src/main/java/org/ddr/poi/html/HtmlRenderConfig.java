@@ -17,6 +17,7 @@
 package org.ddr.poi.html;
 
 import org.ddr.poi.html.util.CSSLength;
+import org.ddr.poi.math.MathRenderConfig;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STLevelSuffix;
 
 import java.util.List;
@@ -37,6 +38,8 @@ public class HtmlRenderConfig {
     private int numberingIndent = -1;
     private int numberingHanging = -1;
     private STLevelSuffix.Enum numberingSpacing;
+
+    private final MathRenderConfig mathRenderConfig = new MathRenderConfig();
 
     /**
      * @return global font family
@@ -118,5 +121,9 @@ public class HtmlRenderConfig {
 
     public void setNumberingSpacing(STLevelSuffix.Enum numberingSpacing) {
         this.numberingSpacing = numberingSpacing;
+    }
+
+    public MathRenderConfig getMathRenderConfig() {
+        return mathRenderConfig;
     }
 }
