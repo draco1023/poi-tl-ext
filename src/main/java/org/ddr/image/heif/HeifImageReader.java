@@ -6,8 +6,11 @@ import com.drew.imaging.ImageProcessingException;
 import com.drew.metadata.Metadata;
 import com.twelvemonkeys.imageio.ImageReaderBase;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.ddr.image.ImageInputStreamWrapper;
 import org.ddr.poi.util.HttpURLConnectionUtils;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,7 +18,6 @@ import javax.imageio.ImageIO;
 import javax.imageio.ImageReadParam;
 import javax.imageio.ImageTypeSpecifier;
 import javax.imageio.spi.ImageReaderSpi;
-import javax.imageio.stream.ImageInputStream;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -29,6 +31,7 @@ public class HeifImageReader extends ImageReaderBase {
     private static final Logger log = LoggerFactory.getLogger(HeifImageReader.class);
     private final HeifMetadataReader metadataReader = new HeifMetadataReader();
 
+    private ImageInputStreamWrapper wrapper;
     private Metadata metadata;
     private Dimension dimension;
 
@@ -47,7 +50,7 @@ public class HeifImageReader extends ImageReaderBase {
         super.setInput(input, seekForwardOnly, ignoreMetadata);
 
         if (imageInput != null) {
-            ImageInputStreamWrapper wrapper = new ImageInputStreamWrapper(imageInput);
+            wrapper = new ImageInputStreamWrapper(imageInput);
             try {
                 metadata = ImageMetadataReader.readMetadata(wrapper, 0, FileType.Heif);
                 dimension = metadataReader.getDimension(metadata);
@@ -74,74 +77,83 @@ public class HeifImageReader extends ImageReaderBase {
 
     @Override
     public BufferedImage read(int imageIndex, ImageReadParam param) throws IOException {
-        return convert(imageInput, param);
+        return convert(param);
     }
 
-    BufferedImage convert(ImageInputStream input, ImageReadParam param) throws IOException {
+    BufferedImage convert(ImageReadParam param) {
         HttpURLConnection uploadConnection = null;
         HttpURLConnection convertConnection = null;
         HttpURLConnection downloadConnection = null;
 
-        HeicOnlineParam heicOnlineParam = param instanceof HeicOnlineParam ? (HeicOnlineParam) param : new HeicOnlineParam();
-
         try {
-            uploadConnection = HttpURLConnectionUtils.connect("https://s1.heic.online/heic/");
-            uploadConnection.setRequestMethod("POST");
-            uploadConnection.setDoOutput(true);
-            uploadConnection.setRequestProperty("X-File-Name", "public.heic");
-            uploadConnection.setRequestProperty("Content-Type", "application/octet-stream");
-            uploadConnection.setRequestProperty("Origin", "https://heic.online");
-            uploadConnection.setRequestProperty("Referer", "https://heic.online/");
+            uploadConnection = HttpURLConnectionUtils.connect("https://ezgif.com/heic-to-jpg");
+            uploadConnection.setInstanceFollowRedirects(false);
+            uploadConnection.setRequestProperty("Referer", "https://ezgif.com/heic-to-jpg");
+            String boundary = HttpURLConnectionUtils.initFormData(uploadConnection);
 
             try (OutputStream outputStream = uploadConnection.getOutputStream()) {
-                byte[] buffer = new byte[8192];
-                int n;
-                while (-1 != (n = input.read(buffer))) {
-                    outputStream.write(buffer, 0, n);
-                }
+                byte[] boundaryBytes = ("--" + boundary).getBytes();
+                wrapper.seek(0);
+                HttpURLConnectionUtils.addFormData(outputStream, boundaryBytes, "new-image", "some.heic", wrapper);
 
+                outputStream.write(boundaryBytes);
+                outputStream.write("--".getBytes());
+                outputStream.write(HttpURLConnectionUtils.newLineBytes);
                 outputStream.flush();
             }
 
             // 获取上传响应
             int uploadResponseCode = uploadConnection.getResponseCode();
-            String fileId;
-            try (InputStream uploadResponse = uploadConnection.getInputStream()) {
-                fileId = IOUtils.toString(uploadResponse, StandardCharsets.UTF_8).trim();
-            }
-            if (uploadResponseCode == HttpURLConnection.HTTP_OK) {
+            if (uploadResponseCode == HttpURLConnection.HTTP_MOVED_TEMP) {
+                String location = uploadConnection.getHeaderField("Location");
+                String convertUrl = StringUtils.substringBeforeLast(location, ".");
+                String fileId = StringUtils.substringAfterLast(convertUrl, "/");
+                convertUrl += "?ajax=true";
+
                 if (log.isDebugEnabled()) {
                     log.debug("Heic uploaded: {}", fileId);
                 }
-                convertConnection = HttpURLConnectionUtils.connect("https://s1.heic.online/heic/");
-                convertConnection.setRequestMethod("POST");
-                convertConnection.setDoOutput(true);
-                convertConnection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
-                convertConnection.setRequestProperty("Referer", "https://heic.online/");
-                String data = heicOnlineParam.withId(fileId);
-                convertConnection.setRequestProperty("Content-Length", String.valueOf(data.length()));
+                convertConnection = HttpURLConnectionUtils.connect(convertUrl);
+                convertConnection.setRequestProperty("Referer", location);
+                boundary = HttpURLConnectionUtils.initFormData(convertConnection);
                 try (OutputStream convertOutput = convertConnection.getOutputStream()) {
-                    IOUtils.write(data, convertOutput, StandardCharsets.UTF_8);
+                    byte[] boundaryBytes = ("--" + boundary).getBytes();
+
+                    HttpURLConnectionUtils.addFormData(convertOutput, boundaryBytes, "file", fileId, null);
+                    HttpURLConnectionUtils.addFormData(convertOutput, boundaryBytes, "percentage", "90", null);
+                    HttpURLConnectionUtils.addFormData(convertOutput, boundaryBytes, "percentager", "90", null);
+                    HttpURLConnectionUtils.addFormData(convertOutput, boundaryBytes, "background", "#ffffff", null);
+                    HttpURLConnectionUtils.addFormData(convertOutput, boundaryBytes, "backgroundc", "#ffffff", null);
+                    HttpURLConnectionUtils.addFormData(convertOutput, boundaryBytes, "ajax", "true", null);
+
+                    convertOutput.write(boundaryBytes);
+                    convertOutput.write("--".getBytes());
+                    convertOutput.write(HttpURLConnectionUtils.newLineBytes);
+                    convertOutput.flush();
                 }
                 int convertResponseCode = convertConnection.getResponseCode();
-                String json;
-                try (InputStream convertResponse = convertConnection.getInputStream()) {
-                    json = IOUtils.toString(convertResponse, StandardCharsets.UTF_8);
-                }
-                if (convertResponseCode == HttpURLConnection.HTTP_OK && json.contains("SUCCESS")) {
-                    if (log.isDebugEnabled()) {
-                        log.debug("Heic converted: {}", json);
-                    }
-                    String url = "https://s1.heic.online/upload/" + fileId + "/";
-                    downloadConnection = HttpURLConnectionUtils.connect(url);
-                    try (InputStream downloadResponse = downloadConnection.getInputStream()) {
-                        return ImageIO.read(downloadResponse);
+                if (convertResponseCode == HttpURLConnection.HTTP_OK) {
+                    try (InputStream convertResponse = convertConnection.getInputStream()) {
+                        Element body = Jsoup.parse(convertResponse, StandardCharsets.UTF_8.name(), "").body();
+                        if (log.isDebugEnabled()) {
+                            log.debug("Heic converted: {}", body.html());
+                        }
+                        for (Element img : body.select("img")) {
+                            String src = img.attr("src");
+                            if (StringUtils.contains(src, "ezgif")) {
+                                String url = "https:" + src;
+                                downloadConnection = HttpURLConnectionUtils.connect(url);
+                                try (InputStream downloadResponse = downloadConnection.getInputStream()) {
+                                    return ImageIO.read(downloadResponse);
+                                }
+                            }
+                        }
                     }
                 } else {
-                    log.warn("Failed to convert heic image. Response code: {}, {}", convertResponseCode, json);
+                    log.warn("Failed to convert heic image. Response code: {}", convertResponseCode);
                 }
             } else {
-                log.warn("Failed to upload image. Response code: {}, {}", uploadResponseCode, fileId);
+                log.warn("Failed to upload image. Response code: {}", uploadResponseCode);
             }
 
         } catch (Exception e) {
