@@ -8,6 +8,7 @@ import com.twelvemonkeys.imageio.ImageReaderBase;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.ddr.image.ImageInputStreamWrapper;
+import org.ddr.image.MetadataReader;
 import org.ddr.poi.util.HttpURLConnectionUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
@@ -29,14 +30,21 @@ import java.util.Iterator;
 
 public class HeifImageReader extends ImageReaderBase {
     private static final Logger log = LoggerFactory.getLogger(HeifImageReader.class);
-    private final HeifMetadataReader metadataReader = new HeifMetadataReader();
+    protected final MetadataReader metadataReader;
 
-    private ImageInputStreamWrapper wrapper;
-    private Metadata metadata;
-    private Dimension dimension;
+    protected ImageInputStreamWrapper wrapper;
+    protected Metadata metadata;
+    protected Dimension dimension;
+    protected String format;
 
     public HeifImageReader(ImageReaderSpi provider) {
+        this(provider, new HeifMetadataReader(), "heic");
+    }
+
+    protected HeifImageReader(ImageReaderSpi provider, MetadataReader metadataReader, String format) {
         super(provider);
+        this.metadataReader = metadataReader;
+        this.format = format;
     }
 
     @Override
@@ -86,15 +94,15 @@ public class HeifImageReader extends ImageReaderBase {
         HttpURLConnection downloadConnection = null;
 
         try {
-            uploadConnection = HttpURLConnectionUtils.connect("https://ezgif.com/heic-to-jpg");
+            uploadConnection = HttpURLConnectionUtils.connect("https://ezgif.com/" + format + "-to-jpg");
             uploadConnection.setInstanceFollowRedirects(false);
-            uploadConnection.setRequestProperty("Referer", "https://ezgif.com/heic-to-jpg");
+            uploadConnection.setRequestProperty("Referer", "https://ezgif.com/" + format + "-to-jpg");
             String boundary = HttpURLConnectionUtils.initFormData(uploadConnection);
 
             try (OutputStream outputStream = uploadConnection.getOutputStream()) {
                 byte[] boundaryBytes = ("--" + boundary).getBytes();
                 wrapper.seek(0);
-                HttpURLConnectionUtils.addFormData(outputStream, boundaryBytes, "new-image", "some.heic", wrapper);
+                HttpURLConnectionUtils.addFormData(outputStream, boundaryBytes, "new-image", "some." + format, wrapper);
 
                 outputStream.write(boundaryBytes);
                 outputStream.write("--".getBytes());
@@ -111,7 +119,7 @@ public class HeifImageReader extends ImageReaderBase {
                 convertUrl += "?ajax=true";
 
                 if (log.isDebugEnabled()) {
-                    log.debug("Heic uploaded: {}", fileId);
+                    log.debug("{} uploaded: {}", format, fileId);
                 }
                 convertConnection = HttpURLConnectionUtils.connect(convertUrl);
                 convertConnection.setRequestProperty("Referer", location);
@@ -136,7 +144,7 @@ public class HeifImageReader extends ImageReaderBase {
                     try (InputStream convertResponse = convertConnection.getInputStream()) {
                         Element body = Jsoup.parse(convertResponse, StandardCharsets.UTF_8.name(), "").body();
                         if (log.isDebugEnabled()) {
-                            log.debug("Heic converted: {}", body.html());
+                            log.debug("{} converted: {}", format, body.html());
                         }
                         for (Element img : body.select("img")) {
                             String src = img.attr("src");
@@ -150,14 +158,14 @@ public class HeifImageReader extends ImageReaderBase {
                         }
                     }
                 } else {
-                    log.warn("Failed to convert heic image. Response code: {}", convertResponseCode);
+                    log.warn("Failed to convert {} image. Response code: {}", format, convertResponseCode);
                 }
             } else {
                 log.warn("Failed to upload image. Response code: {}", uploadResponseCode);
             }
 
         } catch (Exception e) {
-            log.warn("Failed to convert heic image", e);
+            log.warn("Failed to convert {} image", format, e);
             IOUtils.close(uploadConnection);
             IOUtils.close(convertConnection);
             IOUtils.close(downloadConnection);

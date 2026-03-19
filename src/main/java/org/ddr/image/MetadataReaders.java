@@ -1,5 +1,6 @@
 package org.ddr.image;
 
+import org.ddr.image.avif.AvifMetadataReader;
 import org.ddr.image.bmp.BmpMetadataReader;
 import org.ddr.image.eps.EpsMetadataReader;
 import org.ddr.image.gif.GifMetadataReader;
@@ -15,6 +16,7 @@ public class MetadataReaders {
             new PngMetadataReader(),
             new GifMetadataReader(),
             new WebpMetadataReader(),
+            new AvifMetadataReader(),
             new HeifMetadataReader(),
             new BmpMetadataReader(),
             new TiffMetadataReader(),

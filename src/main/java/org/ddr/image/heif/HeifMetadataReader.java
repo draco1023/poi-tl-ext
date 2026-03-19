@@ -13,7 +13,7 @@ import org.ddr.image.MetadataReader;
 
 import java.awt.*;
 
-public class HeifMetadataReader implements MetadataReader{
+public class HeifMetadataReader implements MetadataReader {
     @Override
     public boolean canRead(FileType type) {
         return type == FileType.Heif;
@@ -40,6 +40,13 @@ public class HeifMetadataReader implements MetadataReader{
                 if (r != null) {
                     rotated = r % 2 == 1;
                 }
+                // FIXME 实际上可以在此处获取到 width 和 height，但是图片会直接嵌入到 word 中，能否呈现因系统支持而异，特意不获取走格式转换流程
+//                if (width == null) {
+//                    width = directory.getInteger(HeifDirectory.TAG_IMAGE_WIDTH);
+//                }
+//                if (height == null) {
+//                    height = directory.getInteger(HeifDirectory.TAG_IMAGE_HEIGHT);
+//                }
             } else if (directory instanceof ExifIFD0Directory) {
                 if (rotated == null) {
                     Integer r = directory.getInteger(ExifIFD0Directory.TAG_ORIENTATION);
@@ -48,8 +55,12 @@ public class HeifMetadataReader implements MetadataReader{
                     }
                 }
             } else if (directory instanceof ExifSubIFDDirectory) {
-                width = directory.getInteger(ExifSubIFDDirectory.TAG_EXIF_IMAGE_WIDTH);
-                height = directory.getInteger(ExifSubIFDDirectory.TAG_EXIF_IMAGE_HEIGHT);
+                if (width == null) {
+                    width = directory.getInteger(ExifSubIFDDirectory.TAG_EXIF_IMAGE_WIDTH);
+                }
+                if (height == null) {
+                    height = directory.getInteger(ExifSubIFDDirectory.TAG_EXIF_IMAGE_HEIGHT);
+                }
             }
         }
         if (width != null && height != null) {
