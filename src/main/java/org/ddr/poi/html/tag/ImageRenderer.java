@@ -225,6 +225,10 @@ public class ImageRenderer implements ElementRenderer {
             for (MetadataReader metadataReader : MetadataReaders.INSTANCES) {
                 if (metadataReader.canRead(fileType)) {
                     try {
+                        // FIXME metadata-extractor 一直未发版支持 AVIF 格式，会被归为 QuickTime 格式
+                        if (fileType == FileType.QuickTime) {
+                            fileType = FileType.Heif;
+                        }
                         Metadata metadata = ImageMetadataReader.readMetadata(inputStream, length, fileType);
                         type = metadataReader.getType(metadata);
                         dimension = metadataReader.getDimension(metadata);
