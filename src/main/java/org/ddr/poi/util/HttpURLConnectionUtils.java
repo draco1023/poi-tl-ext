@@ -16,6 +16,7 @@
 
 package org.ddr.poi.util;
 
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import javax.net.ssl.HostnameVerifier;
@@ -26,7 +27,10 @@ import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.ProtocolException;
 import java.net.URL;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
@@ -43,6 +47,9 @@ import java.util.Base64;
  * @since 2019-12-12
  */
 public class HttpURLConnectionUtils {
+
+    public static final byte[] newLineBytes = "\r\n".getBytes();
+
     public static class X509TrustAllManager implements X509TrustManager {
         @Override
         public void checkClientTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException {
@@ -120,5 +127,56 @@ public class HttpURLConnectionUtils {
         } catch (NoSuchAlgorithmException | NoSuchProviderException | KeyManagementException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * 初始化multipart/form-data请求头
+     *
+     * @param connect http连接
+     * @return boundary
+     */
+    public static String initFormData(HttpURLConnection connect) throws ProtocolException {
+        connect.setDoOutput(true);
+        connect.setRequestMethod("POST");
+        String boundary = "----WebKitFormBoundary" + RandomStringUtils.randomAlphanumeric(16);
+        connect.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+        return boundary;
+    }
+
+    /**
+     * 添加FormData
+     * @param field 字段名
+     * @param value 字段值
+     * @param data 附加数据
+     */
+    public static void addFormData(OutputStream outputStream, byte[] boundaryBytes,
+                                   String field, String value, InputStream data) throws IOException {
+        outputStream.write(boundaryBytes);
+        outputStream.write(newLineBytes);
+
+        outputStream.write("Content-Disposition: form-data; name=\"".getBytes());
+        outputStream.write(field.getBytes());
+        outputStream.write("\"".getBytes());
+        if (data != null) {
+            outputStream.write("; filename=\"".getBytes());
+            outputStream.write(value.getBytes());
+            outputStream.write("\"".getBytes());
+            outputStream.write(newLineBytes);
+
+            outputStream.write("Content-Type: application/octet-stream".getBytes());
+            outputStream.write(newLineBytes);
+            outputStream.write(newLineBytes);
+            // data
+            byte[] buffer = new byte[8192];
+            int n;
+            while (-1 != (n = data.read(buffer))) {
+                outputStream.write(buffer, 0, n);
+            }
+        } else {
+            outputStream.write(newLineBytes);
+            outputStream.write(newLineBytes);
+            outputStream.write(value.getBytes());
+        }
+        outputStream.write(newLineBytes);
     }
 }
