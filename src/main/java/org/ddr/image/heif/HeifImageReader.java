@@ -96,6 +96,7 @@ public class HeifImageReader extends ImageReaderBase {
         try {
             uploadConnection = HttpURLConnectionUtils.connect("https://ezgif.com/" + format + "-to-jpg");
             uploadConnection.setInstanceFollowRedirects(false);
+            HttpURLConnectionUtils.initUserAgent(uploadConnection);
             uploadConnection.setRequestProperty("Referer", "https://ezgif.com/" + format + "-to-jpg");
             String boundary = HttpURLConnectionUtils.initFormData(uploadConnection);
 
@@ -122,6 +123,7 @@ public class HeifImageReader extends ImageReaderBase {
                     log.debug("{} uploaded: {}", format, fileId);
                 }
                 convertConnection = HttpURLConnectionUtils.connect(convertUrl);
+                HttpURLConnectionUtils.initUserAgent(convertConnection);
                 convertConnection.setRequestProperty("Referer", location);
                 boundary = HttpURLConnectionUtils.initFormData(convertConnection);
                 try (OutputStream convertOutput = convertConnection.getOutputStream()) {
@@ -151,6 +153,7 @@ public class HeifImageReader extends ImageReaderBase {
                             if (StringUtils.contains(src, "ezgif")) {
                                 String url = "https:" + src;
                                 downloadConnection = HttpURLConnectionUtils.connect(url);
+                                HttpURLConnectionUtils.initUserAgent(downloadConnection);
                                 try (InputStream downloadResponse = downloadConnection.getInputStream()) {
                                     return ImageIO.read(downloadResponse);
                                 }

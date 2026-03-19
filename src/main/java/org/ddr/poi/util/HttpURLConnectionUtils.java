@@ -144,6 +144,13 @@ public class HttpURLConnectionUtils {
     }
 
     /**
+     * 初始化User-Agent请求头
+     */
+    public static void initUserAgent(HttpURLConnection connect) {
+        connect.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36");
+    }
+
+    /**
      * 添加FormData
      * @param field 字段名
      * @param value 字段值
