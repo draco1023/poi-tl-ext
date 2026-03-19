@@ -182,6 +182,10 @@ public class ImageRenderer implements ElementRenderer {
         HttpURLConnection connect = null;
         try {
             connect = HttpURLConnectionUtils.connect(src);
+            HttpURLConnectionUtils.initUserAgent(connect);
+            int firstSlashPosition = src.indexOf('/', src.indexOf("://") + 3);
+            connect.setRequestProperty("Referrer", src.substring(0, firstSlashPosition));
+
             InputStream urlStream = connect.getInputStream();
             boolean svg = StringUtils.contains(connect.getHeaderField("content-type"), HtmlConstants.TAG_SVG);
             ByteArrayCopyStream outputStream = new ByteArrayCopyStream(urlStream.available());
