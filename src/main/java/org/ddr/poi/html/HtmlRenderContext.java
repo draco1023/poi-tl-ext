@@ -1476,23 +1476,38 @@ public class HtmlRenderContext extends RenderContext<String> {
         }
         boolean newParagraph = false;
         XmlCursor xmlCursor = dedupeParagraph.getCTP().newCursor();
+        xmlCursor.push();
         if (xmlCursor.toPrevSibling()) {
             if (XmlUtils.P_QNAME.equals(xmlCursor.getName())) {
-                if (xmlCursor.toLastChild()) {
-                    if (XmlUtils.R_QNAME.equals(xmlCursor.getName())) {
-                        xmlCursor.push();
-                        if (xmlCursor.toFirstChild() && XmlUtils.BR_QNAME.equals(xmlCursor.getName()) && !xmlCursor.toNextSibling()) {
-                            xmlCursor.pop();
-                            xmlCursor.removeXml();
-                            unmarkDedupe();
-                            newParagraph = true;
-                        }
-                    }
+                newParagraph = removeLastBrRun(xmlCursor);
+            }
+        }
+
+        if (!newParagraph) {
+            xmlCursor.pop();
+            newParagraph = removeLastBrRun(xmlCursor);
+        }
+
+        xmlCursor.dispose();
+        return newParagraph;
+    }
+
+    private boolean removeLastBrRun(XmlCursor xmlCursor) {
+        boolean removed = false;
+        if (xmlCursor.toLastChild()) {
+            if (XmlUtils.R_QNAME.equals(xmlCursor.getName())) {
+                xmlCursor.push();
+                if (xmlCursor.toFirstChild() && XmlUtils.BR_QNAME.equals(xmlCursor.getName()) && !xmlCursor.toNextSibling()) {
+                    xmlCursor.pop();
+                    xmlCursor.removeXml();
+                    unmarkDedupe();
+                    removed = true;
+                } else {
+                    xmlCursor.pop();
                 }
             }
         }
-        xmlCursor.dispose();
-        return newParagraph;
+        return removed;
     }
 
     private void adjustCursor(IBody container, boolean isTableTag) {
