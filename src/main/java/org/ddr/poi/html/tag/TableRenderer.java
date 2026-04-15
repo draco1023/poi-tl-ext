@@ -349,6 +349,32 @@ public class TableRenderer implements ElementRenderer {
                 columnIndex += colspan;
             }
         }
+        for (Element tr : trs) {
+            for (Element td : tr.children()) {
+                if (!td.hasAttr(HtmlConstants.ATTR_COLUMN_INDEX)) {
+                    continue;
+                }
+                int colspan = NumberUtils.toInt(td.attr(HtmlConstants.ATTR_COLSPAN), 1);
+                int columnIndex = Integer.parseInt(td.attr(HtmlConstants.ATTR_COLUMN_INDEX));
+                int sum = 0;
+                if (colspan == 1) {
+                    sum = colWidths[columnIndex].intValue();
+                } else {
+                    for (int k = 0; k < colspan; k++) {
+                        sum += colWidths[columnIndex + k].intValue();
+                    }
+                }
+                String tdWidth = sum + CSSLengthUnit.TWIP.getLiteral();
+                String style = td.attr(HtmlConstants.ATTR_STYLE).trim();
+                if (style.isEmpty()) {
+                    style = HtmlConstants.ATTR_WIDTH + HtmlConstants.COLON + tdWidth;
+                } else {
+                    style += (style.endsWith(HtmlConstants.SEMICOLON) ? "" : HtmlConstants.SEMICOLON) + HtmlConstants.ATTR_WIDTH + HtmlConstants.COLON + tdWidth;
+                }
+
+                td.attr(HtmlConstants.ATTR_STYLE, style);
+            }
+        }
 
         return true;
     }
