@@ -18,7 +18,7 @@ public interface ListStyleType {
     String SYMBOL_CIRCLE = "o"; // ◦ (Symbol font circle)
     String SYMBOL_DISCLOSURE_CLOSED = "\uF075"; // ▸
     String SYMBOL_DISCLOSURE_OPEN = "\uF071"; // ▾
-    String SYMBOL_SQUARE = "\uF0A7"; // ▪ (Symbol font square)
+    String SYMBOL_SQUARE = "▪"; // ▪ Unicode font square (U+25AA)
 
     String FONT_SYMBOL = "Symbol";
     String FONT_WINGDINGS_3 = "Wingdings 3";
@@ -40,7 +40,7 @@ public interface ListStyleType {
         DECIMAL("decimal", STNumberFormat.DECIMAL, "", null),
         DISCLOSURE_CLOSED("disclosure-closed", STNumberFormat.BULLET, SYMBOL_DISCLOSURE_CLOSED, FONT_WINGDINGS_3),
         DISCLOSURE_OPEN("disclosure-open", STNumberFormat.BULLET, SYMBOL_DISCLOSURE_OPEN, FONT_WINGDINGS_3),
-        SQUARE("square", STNumberFormat.BULLET, SYMBOL_SQUARE, FONT_SYMBOL),
+        SQUARE("square", STNumberFormat.BULLET, SYMBOL_SQUARE, null),
         NONE("none", STNumberFormat.NONE, null, null);
 
         private static final Map<String, ListStyleType> TYPE_MAP = Arrays.stream(values())

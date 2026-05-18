@@ -109,6 +109,7 @@ import java.io.InputStream;
 import java.math.BigInteger;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -132,6 +133,10 @@ public class HtmlRenderContext extends RenderContext<String> {
      * 默认超链接颜色
      */
     private static final String DEFAULT_HYPERLINK_COLOR = "0563C1";
+
+    private static final Set<String> FORM_CONTROL_TAGS = new HashSet<>(Arrays.asList(
+        "button", "fieldset", "input", "keygen", "object", "output", "select", "textarea"
+    ));
 
     /**
      * HTML元素渲染器提供者
@@ -1320,7 +1325,7 @@ public class HtmlRenderContext extends RenderContext<String> {
         if (log.isDebugEnabled()) {
             log.info("Start rendering html tag: <{}{}>", element.normalName(), element.attributes());
         }
-        if (element.tag().isFormListed() || element.tag().isFormSubmittable()) {
+        if (FORM_CONTROL_TAGS.contains(element.normalName())) {
             return;
         }
 
