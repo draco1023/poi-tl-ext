@@ -914,7 +914,7 @@ public class HtmlRenderContext extends RenderContext<String> {
                         continue;
                     }
                     if (mergeWhitespace) {
-                        if (sb.length() > 0) {
+                        if (sb.length() > 0 || previousText != null) {
                             sb.append(' ');
                         }
                         mergeWhitespace = false;
