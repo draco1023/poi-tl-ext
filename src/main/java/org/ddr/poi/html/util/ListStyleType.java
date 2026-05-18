@@ -14,13 +14,13 @@ import java.util.stream.Collectors;
  * @since 2022-02-08
  */
 public interface ListStyleType {
-    String SYMBOL_DISC = "\uF06C"; // •⚫
-    String SYMBOL_CIRCLE = "\uF0A1"; // ◦⚪
+    String SYMBOL_DISC = "\uF0B7"; // • (Symbol font default bullet)
+    String SYMBOL_CIRCLE = "o"; // ◦ (Symbol font circle)
     String SYMBOL_DISCLOSURE_CLOSED = "\uF075"; // ▸
     String SYMBOL_DISCLOSURE_OPEN = "\uF071"; // ▾
-    String SYMBOL_SQUARE = "\uF06E"; // ▪
+    String SYMBOL_SQUARE = "\uF0A7"; // ▪ (Symbol font square)
 
-    String FONT_WINGDINGS = "Wingdings";
+    String FONT_SYMBOL = "Symbol";
     String FONT_WINGDINGS_3 = "Wingdings 3";
 
     String getName();
@@ -35,12 +35,12 @@ public interface ListStyleType {
     String getFont();
 
     enum Unordered implements ListStyleType {
-        DISC("disc", STNumberFormat.BULLET, SYMBOL_DISC, FONT_WINGDINGS),
-        CIRCLE("circle", STNumberFormat.BULLET, SYMBOL_CIRCLE, FONT_WINGDINGS),
+        DISC("disc", STNumberFormat.BULLET, SYMBOL_DISC, FONT_SYMBOL),
+        CIRCLE("circle", STNumberFormat.BULLET, SYMBOL_CIRCLE, FONT_SYMBOL),
         DECIMAL("decimal", STNumberFormat.DECIMAL, "", null),
         DISCLOSURE_CLOSED("disclosure-closed", STNumberFormat.BULLET, SYMBOL_DISCLOSURE_CLOSED, FONT_WINGDINGS_3),
         DISCLOSURE_OPEN("disclosure-open", STNumberFormat.BULLET, SYMBOL_DISCLOSURE_OPEN, FONT_WINGDINGS_3),
-        SQUARE("square", STNumberFormat.BULLET, SYMBOL_SQUARE, FONT_WINGDINGS),
+        SQUARE("square", STNumberFormat.BULLET, SYMBOL_SQUARE, FONT_SYMBOL),
         NONE("none", STNumberFormat.NONE, null, null);
 
         private static final Map<String, ListStyleType> TYPE_MAP = Arrays.stream(values())
@@ -105,11 +105,11 @@ public interface ListStyleType {
         KATAKANA("katakana", STNumberFormat.AIUEO_FULL_WIDTH, "", null),
         KATAKANA_IROHA("katakana-iroha", STNumberFormat.IROHA_FULL_WIDTH, "", null),
         /* Symbolic */
-        DISC("disc", STNumberFormat.BULLET, SYMBOL_DISC, FONT_WINGDINGS),
-        CIRCLE("circle", STNumberFormat.BULLET, SYMBOL_CIRCLE, FONT_WINGDINGS),
+        DISC("disc", STNumberFormat.BULLET, SYMBOL_DISC, FONT_SYMBOL),
+        CIRCLE("circle", STNumberFormat.BULLET, SYMBOL_CIRCLE, FONT_SYMBOL),
         DISCLOSURE_CLOSED("disclosure-closed", STNumberFormat.BULLET, SYMBOL_DISCLOSURE_CLOSED, FONT_WINGDINGS_3),
         DISCLOSURE_OPEN("disclosure-open", STNumberFormat.BULLET, SYMBOL_DISCLOSURE_OPEN, FONT_WINGDINGS_3),
-        SQUARE("square", STNumberFormat.BULLET, SYMBOL_SQUARE, FONT_WINGDINGS),
+        SQUARE("square", STNumberFormat.BULLET, SYMBOL_SQUARE, FONT_SYMBOL),
         /* Longhand East Asian */
         JAPANESE_INFORMAL("japanese-informal", STNumberFormat.JAPANESE_COUNTING, "", null),
         JAPANESE_FORMAL("japanese-formal", STNumberFormat.JAPANESE_LEGAL, "", null),
