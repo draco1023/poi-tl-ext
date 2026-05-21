@@ -48,7 +48,7 @@ public class ListRenderer implements ElementRenderer {
         boolean hanging = !HtmlConstants.INSIDE.equals(listStylePosition);
         CSSLength marginLeft = CSSLength.of(context.currentElementStyle().getMarginLeft().toLowerCase());
         int left = marginLeft.isValid() && !marginLeft.isPercent()
-                ? RenderUtils.emuToTwips(context.lengthToEMU(marginLeft)) : 720;
+                ? Math.max(360, RenderUtils.emuToTwips(context.lengthToEMU(marginLeft))) : 360;
         CSSLength marginRight = CSSLength.of(context.currentElementStyle().getMarginRight().toLowerCase());
         int right = marginRight.isValid() && !marginRight.isPercent()
                 ? RenderUtils.emuToTwips(context.lengthToEMU(marginRight)) : 0;
