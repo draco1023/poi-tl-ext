@@ -22,7 +22,6 @@ import org.ddr.poi.html.ElementRenderer;
 import org.ddr.poi.html.HtmlConstants;
 import org.ddr.poi.html.HtmlRenderContext;
 import org.ddr.poi.html.util.RenderUtils;
-import org.jsoup.internal.StringUtil;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
 import org.jsoup.nodes.TextNode;
@@ -44,7 +43,7 @@ public class RubyRenderer implements ElementRenderer {
 
     @Override
     public boolean renderStart(Element element, HtmlRenderContext context) {
-        StringBuilder sb = StringUtil.borrowBuilder();
+        StringBuilder sb = new StringBuilder();
         for (Node childNode : element.childNodes()) {
             if (childNode instanceof Element) {
                 String tagName = ((Element) childNode).normalName();
@@ -66,8 +65,8 @@ public class RubyRenderer implements ElementRenderer {
                             ? context.getInheritedFontSizeInHalfPoints() : context.getGlobalFontSize().intValue();
                     fontSize = (fontSize + 1) / 2;
                     ctText.setStringValue("EQ \\* jc0 \\* hps" + fontSize + " \\o \\ad(\\s \\up " + (fontSize - 1) + "(" + rt + "),"
-                            + StringUtil.releaseBuilder(sb).trim() + ")");
-                    sb = StringUtil.borrowBuilder();
+                            + sb.toString().trim() + ")");
+                    sb.setLength(0);
 
                     ctr = context.newRun();
                     rPr = RenderUtils.getRPr(ctr);
@@ -76,17 +75,46 @@ public class RubyRenderer implements ElementRenderer {
                 } else if (HtmlConstants.TAG_RP.equals(tagName)) {
                     continue;
                 } else {
-                    StringUtil.appendNormalisedWhitespace(sb, ((Element) childNode).wholeText(), false);
+                    appendNormalisedWhitespace(sb, ((Element) childNode).wholeText());
                 }
             } else if (childNode instanceof TextNode) {
-                StringUtil.appendNormalisedWhitespace(sb, ((TextNode) childNode).getWholeText(), false);
+                appendNormalisedWhitespace(sb, ((TextNode) childNode).getWholeText());
             }
         }
-        String remainText = StringUtil.releaseBuilder(sb);
+        String remainText = sb.toString();
         if (StringUtils.isNotBlank(remainText)) {
             context.renderText(remainText);
         }
         return false;
+    }
+
+    /**
+     * 将文本中的HTML空白字符（空格、\t、\n、\f、\r、&nbsp;）折叠为单个空格后追加到builder中，
+     * 同时丢弃零宽字符（U+200B、U+00AD）；前导空白保留为单个空格。
+     * 语义与jsoup内部的StringUtil.appendNormalisedWhitespace(sb, string, false)一致，
+     * 为避免依赖jsoup内部API而在本地实现
+     *
+     * @param accum 目标builder
+     * @param string 待折叠的文本
+     */
+    private static void appendNormalisedWhitespace(StringBuilder accum, String string) {
+        boolean lastWasWhite = false;
+
+        int len = string.length();
+        int c;
+        for (int i = 0; i < len; i += Character.charCount(c)) {
+            c = string.codePointAt(i);
+            if (c == ' ' || c == '\t' || c == '\n' || c == '\f' || c == '\r' || c == 160) {
+                if (lastWasWhite) {
+                    continue;
+                }
+                accum.append(' ');
+                lastWasWhite = true;
+            } else if (c != 8203 && c != 173) { // zero width space, soft hyphen
+                accum.appendCodePoint(c);
+                lastWasWhite = false;
+            }
+        }
     }
 
     @Override
