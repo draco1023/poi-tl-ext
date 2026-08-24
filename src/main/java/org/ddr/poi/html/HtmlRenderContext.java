@@ -56,7 +56,6 @@ import org.ddr.poi.html.util.XWPFParagraphRuns;
 import org.ddr.poi.math.MathMLUtils;
 import org.ddr.poi.math.MathRenderConfig;
 import org.ddr.poi.util.XmlUtils;
-import org.jsoup.internal.StringUtil;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
@@ -795,7 +794,7 @@ public class HtmlRenderContext extends RenderContext<String> {
         String whiteSpace = getPropertyValue(HtmlConstants.CSS_WHITE_SPACE);
         WhiteSpaceRule rule = WhiteSpaceRule.of(whiteSpace, WhiteSpaceRule.NORMAL);
 
-        StringBuilder sb = StringUtil.borrowBuilder();
+        StringBuilder sb = new StringBuilder();
         boolean mergeWhitespace = false;
 
         // https://en.wikipedia.org/wiki/List_of_XML_and_HTML_character_entity_references
@@ -934,7 +933,6 @@ public class HtmlRenderContext extends RenderContext<String> {
         }
 
         addText(ctr, sb, endTrimmed);
-        StringUtil.releaseBuilder(sb);
 
         // 应用样式
         applyTextStyle(ctr);
