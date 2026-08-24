@@ -1323,7 +1323,7 @@ public class HtmlRenderContext extends RenderContext<String> {
         if (log.isDebugEnabled()) {
             log.info("Start rendering html tag: <{}{}>", element.normalName(), element.attributes());
         }
-        if (element.tag().isFormListed() || element.tag().isFormSubmittable()) {
+        if (HtmlConstants.FORM_LISTED_TAGS.contains(element.normalName())) {
             return;
         }
 
