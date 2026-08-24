@@ -348,6 +348,13 @@ public interface HtmlConstants {
     Set<String> KEEP_EMPTY_TAGS = Sets.newHashSet(TAG_LI, TAG_HR);
 
     /**
+     * 表单关联元素标签（无需渲染），与旧版jsoup的Tag.isFormListed()清单一致
+     * （该方法在jsoup 1.20.1中被废弃、1.21.1中被移除）
+     */
+    Set<String> FORM_LISTED_TAGS = Sets.newHashSet(
+            "button", "fieldset", "input", "keygen", "object", "output", "select", "textarea");
+
+    /**
      * Word中一些主要的默认字体
      */
     Set<String> MAJOR_FONT = Sets.newHashSet("宋体", "SIMSUN", "新細明體", "TIMES NEW ROMAN", "ARIAL");
