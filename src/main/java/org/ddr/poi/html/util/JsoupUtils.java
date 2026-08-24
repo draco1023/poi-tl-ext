@@ -21,7 +21,6 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
-import org.jsoup.parser.CustomHtmlTreeBuilder;
 import org.jsoup.parser.Parser;
 import org.jsoup.select.Elements;
 
@@ -125,12 +124,15 @@ public class JsoupUtils {
     }
 
     /**
-     * @see org.jsoup.Jsoup#parseBodyFragment(String)
-     * @see org.jsoup.parser.Parser#parseBodyFragment(String, String)
+     * 解析HTML字符串为DOM文档。
+     * jsoup自1.16.2起原生支持SVG/MathML等foreign content，会保留标签名和属性名的大小写，
+     * 因此无需再借助自定义TreeBuilder处理svg大小写问题
+     *
+     * @see org.jsoup.Jsoup#parse(String)
+     * @see org.jsoup.parser.Parser#htmlParser()
      */
     public static Document parse(String html) {
-        CustomHtmlTreeBuilder treeBuilder = new CustomHtmlTreeBuilder();
-        return Jsoup.parse(html, new Parser(treeBuilder));
+        return Jsoup.parse(html, Parser.htmlParser());
     }
 
 }
