@@ -159,7 +159,9 @@ public class NumberingContext {
                         ListStyleType listStyleType = listStyle.getNumberFormat();
                         CTLvl cTLvl = ctAbstractNum.addNewLvl();
                         CTInd ind = cTLvl.addNewPPr().addNewInd();
-                        long left = indent * i + listStyle.getLeft();
+                        // Start level 0 at one indent step, otherwise hanging indent can place
+                        // the first bullet outside the paragraph left edge.
+                        long left = (long) indent * (i + 1) + listStyle.getLeft();
                         long right = listStyle.getRight();
                         for (int j = 0; j < i; j++) {
                             ListStyle previous = listStyles.get(j);
